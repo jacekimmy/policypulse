@@ -68,17 +68,25 @@ function WorkerDashboard() {
   ]
   let aiIdx = 0
 
-  function sendChat() {
+async function sendChat() {
     if (!input.trim()) return
-    setMessages(m => [...m, { role: 'user', text: input }])
+    const question = input
+    setMessages(m => [...m, { role: 'user', text: question }])
     setInput('')
     setTyping(true)
-    setTimeout(() => {
-      const r = aiResponses[aiIdx % aiResponses.length]
-      aiIdx++
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question })
+      })
+      const { answer, citation } = await res.json()
+      setMessages(m => [...m, { role: 'ai', text: answer, citation }])
+    } catch {
+      setMessages(m => [...m, { role: 'ai', text: 'Something went wrong. Please try again.', citation: null }])
+    } finally {
       setTyping(false)
-      setMessages(m => [...m, { role: 'ai', text: r.text, citation: r.citation }])
-    }, 1400)
+    }
   }
 
   function answerQuiz(correct: boolean) {
