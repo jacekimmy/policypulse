@@ -287,19 +287,22 @@ async function sendChat() {
 // ── MANAGER ──────────────────────────────────────────────
 function ManagerDashboard() {
   const [page, setPage] = useState('pulse')
+  const [pulseData, setPulseData] = useState<any>(null)
+
+useEffect(() => {
+  async function loadPulse() {
+    const res = await fetch('/api/manager')
+    const data = await res.json()
+    setPulseData(data)
+  }
+  loadPulse()
+}, [])
 
   const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '24px' }
   const navActive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)' } as React.CSSProperties
   const navInactive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: 'rgba(240,244,255,0.45)', background: 'transparent', border: '1px solid transparent' } as React.CSSProperties
 
-  const team = [
-    { name: 'Sarah K.', time: '9:02 AM', score: '100%', pct: 100, status: 'Done' },
-    { name: 'Marcus T.', time: '9:15 AM', score: '100%', pct: 100, status: 'Done' },
-    { name: 'Jordan D.', time: '10:31 AM', score: '75%', pct: 75, status: 'Review' },
-    { name: 'Priya R.', time: '11:04 AM', score: '75%', pct: 75, status: 'Review' },
-    { name: 'Chen W.', time: '--', score: '--', pct: 0, status: 'Missing' },
-    { name: 'Alex B.', time: '--', score: '--', pct: 0, status: 'Missing' },
-  ]
+
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#060912', fontFamily: 'sans-serif', color: '#f0f4ff' }}>
@@ -341,22 +344,22 @@ function ManagerDashboard() {
                   <tr>{['Employee', 'Completed', 'Score', 'Progress', 'Status'].map(h => <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '10px', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'rgba(240,244,255,0.25)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {team.map(row => (
+                  {(pulseData?.team ?? []).map((row: any) => (
                     <tr key={row.name}>
-                      <td style={{ padding: '12px 16px', color: '#f0f4ff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.name}</td>
-                      <td style={{ padding: '12px 16px', color: 'rgba(240,244,255,0.45)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.time}</td>
-                      <td style={{ padding: '12px 16px', color: row.pct === 100 ? '#34d399' : row.pct > 0 ? '#f59e0b' : '#f87171', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.score}</td>
-                      <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', width: '140px' }}>
-                        <div style={{ height: '6px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)' }}>
-                          <div style={{ height: '100%', width: `${row.pct}%`, borderRadius: '99px', background: row.pct === 100 ? '#34d399' : row.pct > 0 ? '#f59e0b' : '#f87171' }} />
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <span style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: row.status === 'Done' ? 'rgba(52,211,153,0.12)' : row.status === 'Review' ? 'rgba(245,158,11,0.12)' : 'rgba(248,113,113,0.12)', color: row.status === 'Done' ? '#34d399' : row.status === 'Review' ? '#f59e0b' : '#f87171', border: `1px solid ${row.status === 'Done' ? 'rgba(52,211,153,0.2)' : row.status === 'Review' ? 'rgba(245,158,11,0.2)' : 'rgba(248,113,113,0.2)'}` }}>
-                          {row.status === 'Missing' ? '⚠ Missing' : row.status === 'Done' ? '✓ Done' : 'Review'}
-                        </span>
-                      </td>
-                    </tr>
+  <td style={{ padding: '12px 16px', color: '#f0f4ff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.name}</td>
+  <td style={{ padding: '12px 16px', color: 'rgba(240,244,255,0.45)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.completed ? 'Today' : '--'}</td>
+  <td style={{ padding: '12px 16px', color: row.score === 100 ? '#34d399' : row.score !== null ? '#f59e0b' : '#f87171', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.score !== null ? `${row.score}%` : '--'}</td>
+  <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', width: '140px' }}>
+    <div style={{ height: '6px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)' }}>
+      <div style={{ height: '100%', width: `${row.score ?? 0}%`, borderRadius: '99px', background: row.score === 100 ? '#34d399' : row.score !== null ? '#f59e0b' : '#f87171' }} />
+    </div>
+  </td>
+  <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+    <span style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: row.completed ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: row.completed ? '#34d399' : '#f87171', border: `1px solid ${row.completed ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'}` }}>
+      {row.completed ? '✓ Done' : '⚠ Missing'}
+    </span>
+  </td>
+</tr>
                   ))}
                 </tbody>
               </table>
