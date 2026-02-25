@@ -40,6 +40,24 @@ function WorkerDashboard() {
   const [typing, setTyping] = useState(false)
   const [quizDone, setQuizDone] = useState(false)
   const [quizCorrect, setQuizCorrect] = useState<boolean | null>(null)
+  const [onboardingSteps, setOnboardingSteps] = useState<Array<{ step_number: number; label: string; completed: boolean; completed_at: string | null }>>([])
+  const [onboardingLoading, setOnboardingLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadOnboarding() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('onboarding_steps')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('step_number')
+      setOnboardingSteps(data ?? [])
+      setOnboardingLoading(false)
+    }
+    loadOnboarding()
+  }, [])
 
   const aiResponses = [
     { text: "In your first year, you earn 15 days of PTO, accruing at 1.25 days per month. PTO cannot carry over beyond 5 days at year-end.", citation: "Handbook p. 12 - Section 3.2 'Time Off'" },
@@ -165,19 +183,18 @@ function WorkerDashboard() {
                   <div style={{ height: '100%', width: '50%', borderRadius: '99px', background: 'linear-gradient(90deg, #34d399, #6ee7b7)' }} />
                 </div>
               </div>
-              {[
-                { num: '✓', label: 'Employee Handbook – Section 1-3', sub: 'Completed Feb 12, 2026', done: true },
-                { num: '✓', label: 'Code of Conduct Acknowledgment', sub: 'Completed Feb 12, 2026', done: true },
-                { num: '✓', label: 'Data Privacy & GDPR Module', sub: 'Completed Feb 14, 2026', done: true },
-                { num: '4', label: 'SEC / FINRA Compliance Training', sub: 'Due Feb 28, 2026 – Not started', done: false },
-                { num: '5', label: 'Anti-Money Laundering (AML) Module', sub: 'Due Mar 7, 2026', done: false },
-                { num: '6', label: 'IT Security & Acceptable Use Policy', sub: 'Due Mar 7, 2026', done: false },
-              ].map((step, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, background: step.done ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)', color: step.done ? '#34d399' : 'rgba(240,244,255,0.25)', border: `1px solid ${step.done ? 'rgba(52,211,153,0.25)' : 'rgba(255,255,255,0.1)'}` }}>{step.num}</div>
+              {onboardingLoading ? (
+                <div style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px' }}>Loading...</div>
+              ) : onboardingSteps.map((step) => (
+                <div key={step.step_number} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, background: step.completed ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)', color: step.completed ? '#34d399' : 'rgba(240,244,255,0.25)', border: `1px solid ${step.completed ? 'rgba(52,211,153,0.25)' : 'rgba(255,255,255,0.1)'}` }}>
+                    {step.completed ? '✓' : step.step_number}
+                  </div>
                   <div>
                     <div style={{ fontSize: '14px', fontWeight: 500 }}>{step.label}</div>
-                    <div style={{ fontSize: '12px', color: 'rgba(240,244,255,0.45)', marginTop: '2px' }}>{step.sub}</div>
+                    <div style={{ fontSize: '12px', color: 'rgba(240,244,255,0.45)', marginTop: '2px' }}>
+                      {step.completed ? `Completed ${new Date(step.completed_at!).toLocaleDateString()}` : 'Not started'}
+                    </div>
                   </div>
                 </div>
               ))}
