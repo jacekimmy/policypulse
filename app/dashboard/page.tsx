@@ -34,14 +34,21 @@ export default function Dashboard() {
 function WorkerDashboard() {
   const [page, setPage] = useState('chat')
   const [messages, setMessages] = useState<Array<{ role: string; text: string; citation?: string | null }>>([
-    { role: 'ai', text: "Hi! I'm your Policy Assistant. I've read the full 60-page Employee Handbook and can answer any question instantly, with an exact page citation every time. What do you need to know?" },
+    { role: 'ai', text: "Hi! I'm your Policy Assistant. I've read the full Employee Handbook and can answer any question instantly, with an exact page citation every time. What do you need to know?" },
   ])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
-  const [quizDone, setQuizDone] = useState(false)
-  const [quizCorrect, setQuizCorrect] = useState<boolean | null>(null)
+
+  // Onboarding
   const [onboardingSteps, setOnboardingSteps] = useState<Array<{ step_number: number; label: string; completed: boolean; completed_at: string | null }>>([])
   const [onboardingLoading, setOnboardingLoading] = useState(true)
+
+  // Quiz
+  const [questions, setQuestions] = useState<any[]>([])
+  const [quizIndex, setQuizIndex] = useState(0)
+  const [answers, setAnswers] = useState<Array<{ correct: boolean; selected: string }>>([])
+  const [quizDone, setQuizDone] = useState(false)
+  const [quizLoading, setQuizLoading] = useState(true)
 
   useEffect(() => {
     async function loadOnboarding() {
@@ -59,16 +66,17 @@ function WorkerDashboard() {
     loadOnboarding()
   }, [])
 
-  const aiResponses = [
-    { text: "In your first year, you earn 15 days of PTO, accruing at 1.25 days per month. PTO cannot carry over beyond 5 days at year-end.", citation: "Handbook p. 12 - Section 3.2 'Time Off'" },
-    { text: "The remote work policy allows up to 3 days per week from home for eligible roles, subject to manager approval.", citation: "Handbook p. 22 - Section 5.1 'Remote Work'" },
-    { text: "FINRA compliance issues must be reported within 24 hours to the Chief Compliance Officer using Form CCO-001.", citation: "Handbook p. 51 - Section 12.4 'Regulatory Reporting'" },
-    { text: "Business casual applies Monday-Thursday. Fridays are casual dress. Client-facing days always require business professional.", citation: "Handbook p. 8 - Section 2.3 'Dress Code'" },
-    { text: "I could not find a specific answer in the handbook. I have flagged this to your manager automatically.", citation: null },
-  ]
-  let aiIdx = 0
+  useEffect(() => {
+    async function loadQuestions() {
+      const res = await fetch('/api/questions')
+      const data = await res.json()
+      setQuestions(data.questions ?? [])
+      setQuizLoading(false)
+    }
+    loadQuestions()
+  }, [])
 
-async function sendChat() {
+  async function sendChat() {
     if (!input.trim()) return
     const question = input
     setMessages(m => [...m, { role: 'user', text: question }])
@@ -89,28 +97,43 @@ async function sendChat() {
     }
   }
 
- async function answerQuiz(correct: boolean) {
-    if (quizDone) return
-    setQuizDone(true)
-    setQuizCorrect(correct)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await fetch('/api/quiz', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: user.id,
-        question_id: 'sec-17a-4',
-        correct,
-        score: correct ? 100 : 0
-      })
-    })
+  async function answerQuestion(selected: string) {
+    const current = questions[quizIndex]
+    const correct = selected === current.correct_option
+    const newAnswers = [...answers, { correct, selected }]
+    setAnswers(newAnswers)
+
+    if (quizIndex + 1 >= questions.length) {
+      // Quiz complete – save result
+      setQuizDone(true)
+      const totalCorrect = newAnswers.filter(a => a.correct).length
+      const score = Math.round((totalCorrect / questions.length) * 100)
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await fetch('/api/quiz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: user.id,
+            question_id: 'daily-quiz',
+            correct: totalCorrect === questions.length,
+            score
+          })
+        })
+      }
+    } else {
+      setTimeout(() => setQuizIndex(i => i + 1), 800)
+    }
   }
 
   const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '24px' }
   const navActive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: '#4f8ef7', background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.25)' } as React.CSSProperties
   const navInactive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: 'rgba(240,244,255,0.45)', background: 'transparent', border: '1px solid transparent' } as React.CSSProperties
+
+  const currentQuestion = questions[quizIndex]
+  const totalCorrect = answers.filter(a => a.correct).length
+  const finalScore = questions.length > 0 ? Math.round((totalCorrect / questions.length) * 100) : 0
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#060912', fontFamily: 'sans-serif', color: '#f0f4ff' }}>
@@ -129,6 +152,8 @@ async function sendChat() {
       </aside>
 
       <main style={{ flex: 1, padding: '36px 40px', overflowY: 'auto' }}>
+
+        {/* CHAT */}
         {page === 'chat' && (
           <div>
             <div style={{ marginBottom: '32px' }}>
@@ -187,6 +212,7 @@ async function sendChat() {
           </div>
         )}
 
+        {/* ONBOARDING */}
         {page === 'onboarding' && (
           <div>
             <div style={{ marginBottom: '32px' }}>
@@ -198,10 +224,12 @@ async function sendChat() {
               <div style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
                   <span style={{ color: 'rgba(240,244,255,0.45)' }}>Overall</span>
-                  <span style={{ color: '#34d399', fontWeight: 600 }}>50%</span>
+                  <span style={{ color: '#34d399', fontWeight: 600 }}>
+                    {onboardingSteps.length > 0 ? `${Math.round((onboardingSteps.filter(s => s.completed).length / onboardingSteps.length) * 100)}%` : '0%'}
+                  </span>
                 </div>
                 <div style={{ height: '8px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)' }}>
-                  <div style={{ height: '100%', width: '50%', borderRadius: '99px', background: 'linear-gradient(90deg, #34d399, #6ee7b7)' }} />
+                  <div style={{ height: '100%', width: onboardingSteps.length > 0 ? `${Math.round((onboardingSteps.filter(s => s.completed).length / onboardingSteps.length) * 100)}%` : '0%', borderRadius: '99px', background: 'linear-gradient(90deg, #34d399, #6ee7b7)' }} />
                 </div>
               </div>
               {onboardingLoading ? (
@@ -223,60 +251,79 @@ async function sendChat() {
           </div>
         )}
 
+        {/* QUIZ */}
         {page === 'quiz' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
               <div>
                 <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>Daily Quiz</h1>
-                <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>30 seconds. One question. Stay sharp.</p>
+                <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>3 questions. Stay sharp.</p>
               </div>
-              <span style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.2)' }}>Streak: 5 days 🔥</span>
+              {!quizDone && !quizLoading && (
+                <span style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: 'rgba(79,142,247,0.12)', color: '#4f8ef7', border: '1px solid rgba(79,142,247,0.2)' }}>
+                  Question {quizIndex + 1} of {questions.length}
+                </span>
+              )}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
-              <div style={card}>
-                <div style={{ fontSize: '11px', color: 'rgba(240,244,255,0.25)', textTransform: 'uppercase', letterSpacing: '.8px', marginBottom: '12px' }}>Today's Question</div>
-                <div style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1.5, marginBottom: '20px' }}>Under SEC Rule 17a-4, how long must broker-dealers retain order tickets and related records?</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {[{ label: 'A. 1 year', correct: false }, { label: 'B. 2 years', correct: false }, { label: 'C. 3 years', correct: true }, { label: 'D. 7 years', correct: false }].map((opt, i) => (
-                    <button key={i} onClick={() => answerQuiz(opt.correct)} disabled={quizDone}
-                      style={{ padding: '13px 16px', borderRadius: '10px', border: `1px solid ${quizDone && opt.correct ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.1)'}`, cursor: quizDone ? 'default' : 'pointer', fontSize: '14px', background: quizDone && opt.correct ? 'rgba(52,211,153,0.12)' : 'rgba(255,255,255,0.03)', color: quizDone && opt.correct ? '#34d399' : 'rgba(240,244,255,0.6)', fontFamily: 'sans-serif', textAlign: 'left' as const }}>
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                {quizCorrect !== null && (
-                  <div style={{ marginTop: '16px', padding: '14px 16px', borderRadius: '10px', background: quizCorrect ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${quizCorrect ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'}` }}>
-                    <strong style={{ color: quizCorrect ? '#34d399' : '#f87171' }}>{quizCorrect ? '✓ Correct!' : '✗ Incorrect.'}</strong>
-                    <span style={{ color: 'rgba(240,244,255,0.45)', fontSize: '13px', marginLeft: '8px' }}>SEC Rule 17a-4 requires 3 years. — Handbook p. 48</span>
+
+            {quizLoading && (
+              <div style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px' }}>Loading questions...</div>
+            )}
+
+            {!quizLoading && !quizDone && currentQuestion && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
+                <div style={card}>
+                  <div style={{ marginBottom: '8px' }}>
+                    <div style={{ height: '4px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)', marginBottom: '16px' }}>
+                      <div style={{ height: '100%', width: `${((quizIndex) / questions.length) * 100}%`, borderRadius: '99px', background: '#4f8ef7', transition: 'width 0.3s' }} />
+                    </div>
                   </div>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={card}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Your Score History</div>
-                  {[{ label: 'This Week', val: '4 / 5 correct', color: '#34d399', width: '80%' }, { label: 'This Month', val: '18 / 22 correct', color: '#4f8ef7', width: '82%' }].map(item => (
-                    <div key={item.label} style={{ marginBottom: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                        <span style={{ color: 'rgba(240,244,255,0.45)' }}>{item.label}</span>
-                        <span style={{ color: item.color, fontWeight: 600 }}>{item.val}</span>
-                      </div>
-                      <div style={{ height: '6px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)' }}>
-                        <div style={{ height: '100%', width: item.width, borderRadius: '99px', background: item.color }} />
-                      </div>
-                    </div>
-                  ))}
+                  <div style={{ fontSize: '11px', color: 'rgba(240,244,255,0.25)', textTransform: 'uppercase', letterSpacing: '.8px', marginBottom: '12px' }}>{currentQuestion.topic}</div>
+                  <div style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1.5, marginBottom: '20px' }}>{currentQuestion.question}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {['A', 'B', 'C', 'D'].map(opt => (
+                      <button key={opt} onClick={() => answerQuestion(opt)}
+                        style={{ padding: '13px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', fontSize: '14px', background: 'rgba(255,255,255,0.03)', color: 'rgba(240,244,255,0.6)', fontFamily: 'sans-serif', textAlign: 'left' as const }}>
+                        {opt}. {currentQuestion[`option_${opt.toLowerCase()}`]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div style={card}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Team Leaderboard</div>
-                  {[{ name: '🥇 Sarah K.', score: '98%', color: '#34d399' }, { name: '🥈 Marcus T.', score: '95%', color: '#4f8ef7' }, { name: '🥉 You (JD)', score: '82%', color: '#f59e0b' }, { name: 'Priya R.', score: '77%', color: 'rgba(240,244,255,0.45)' }].map(item => (
-                    <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
-                      <span style={{ color: 'rgba(240,244,255,0.45)' }}>{item.name}</span>
-                      <span style={{ color: item.color }}>{item.score}</span>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Your Progress</div>
+                  {answers.map((a, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
+                      <span style={{ color: 'rgba(240,244,255,0.45)' }}>Question {i + 1}</span>
+                      <span style={{ color: a.correct ? '#34d399' : '#f87171', fontWeight: 600 }}>{a.correct ? '✓ Correct' : '✗ Wrong'}</span>
                     </div>
                   ))}
+                  {answers.length === 0 && <div style={{ color: 'rgba(240,244,255,0.25)', fontSize: '13px' }}>No answers yet</div>}
                 </div>
               </div>
-            </div>
+            )}
+
+            {!quizLoading && quizDone && (
+              <div style={card}>
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>{finalScore === 100 ? '🏆' : finalScore >= 66 ? '✅' : '📚'}</div>
+                  <div style={{ fontSize: '36px', fontWeight: 700, color: finalScore === 100 ? '#34d399' : finalScore >= 66 ? '#4f8ef7' : '#f59e0b', marginBottom: '8px' }}>{finalScore}%</div>
+                  <div style={{ fontSize: '16px', color: 'rgba(240,244,255,0.45)', marginBottom: '24px' }}>{totalCorrect} of {questions.length} correct</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', maxWidth: '500px', margin: '0 auto' }}>
+                    {questions.map((q, i) => (
+                      <div key={i} style={{ padding: '12px 16px', borderRadius: '10px', background: answers[i]?.correct ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${answers[i]?.correct ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'}` }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: answers[i]?.correct ? '#34d399' : '#f87171', marginBottom: '4px' }}>
+                          {answers[i]?.correct ? '✓ Correct' : '✗ Incorrect'} – Q{i + 1}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'rgba(240,244,255,0.45)' }}>{q.explanation}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => { setQuizIndex(0); setAnswers([]); setQuizDone(false) }} style={{ marginTop: '24px', padding: '10px 24px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #4f8ef7, #a78bfa)', color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'sans-serif' }}>
+                    Retake Quiz
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -289,20 +336,18 @@ function ManagerDashboard() {
   const [page, setPage] = useState('pulse')
   const [pulseData, setPulseData] = useState<any>(null)
 
-useEffect(() => {
-  async function loadPulse() {
-    const res = await fetch('/api/manager')
-    const data = await res.json()
-    setPulseData(data)
-  }
-  loadPulse()
-}, [])
+  useEffect(() => {
+    async function loadPulse() {
+      const res = await fetch('/api/manager')
+      const data = await res.json()
+      setPulseData(data)
+    }
+    loadPulse()
+  }, [])
 
   const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '24px' }
   const navActive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)' } as React.CSSProperties
   const navInactive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: 'rgba(240,244,255,0.45)', background: 'transparent', border: '1px solid transparent' } as React.CSSProperties
-
-
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#060912', fontFamily: 'sans-serif', color: '#f0f4ff' }}>
@@ -326,10 +371,15 @@ useEffect(() => {
           <div>
             <div style={{ marginBottom: '32px' }}>
               <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>Daily Pulse</h1>
-              <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Team quiz results for today – Feb 24, 2026</p>
+              <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Team quiz results for today</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '24px' }}>
-              {[{ label: 'Completed', val: pulseData ? `${pulseData.completed}` : '--', sub: `of ${pulseData?.total ?? '--'} members`, color: '#34d399' }, { label: 'Avg Score', val: pulseData ? `${pulseData.avgScore}%` : '--', sub: 'today', color: '#4f8ef7' }, { label: 'Not Started', val: pulseData ? `${(pulseData.total ?? 0) - (pulseData.completed ?? 0)}` : '--', sub: 'reminders sent', color: '#f59e0b' }, { label: "Today's Topic", val: 'SEC 17a-4', sub: 'record retention', color: '#f0f4ff' }].map(s => (
+              {[
+                { label: 'Completed', val: pulseData ? `${pulseData.completed}` : '--', sub: `of ${pulseData?.total ?? '--'} members`, color: '#34d399' },
+                { label: 'Avg Score', val: pulseData ? `${pulseData.avgScore}%` : '--', sub: 'today', color: '#4f8ef7' },
+                { label: 'Not Started', val: pulseData ? `${(pulseData.total ?? 0) - (pulseData.completed ?? 0)}` : '--', sub: 'reminders sent', color: '#f59e0b' },
+                { label: "Today's Topic", val: 'SEC 17a-4', sub: 'record retention', color: '#f0f4ff' }
+              ].map(s => (
                 <div key={s.label} style={card}>
                   <div style={{ fontSize: '11px', color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>{s.label}</div>
                   <div style={{ fontSize: s.label === "Today's Topic" ? '20px' : '34px', fontWeight: 700, color: s.color, letterSpacing: '-1px' }}>{s.val}</div>
@@ -346,20 +396,20 @@ useEffect(() => {
                 <tbody>
                   {(pulseData?.team ?? []).map((row: any) => (
                     <tr key={row.name}>
-  <td style={{ padding: '12px 16px', color: '#f0f4ff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.name}</td>
-  <td style={{ padding: '12px 16px', color: 'rgba(240,244,255,0.45)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.completed ? 'Today' : '--'}</td>
-  <td style={{ padding: '12px 16px', color: row.score === 100 ? '#34d399' : row.score !== null ? '#f59e0b' : '#f87171', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.score !== null ? `${row.score}%` : '--'}</td>
-  <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', width: '140px' }}>
-    <div style={{ height: '6px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)' }}>
-      <div style={{ height: '100%', width: `${row.score ?? 0}%`, borderRadius: '99px', background: row.score === 100 ? '#34d399' : row.score !== null ? '#f59e0b' : '#f87171' }} />
-    </div>
-  </td>
-  <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-    <span style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: row.completed ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: row.completed ? '#34d399' : '#f87171', border: `1px solid ${row.completed ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'}` }}>
-      {row.completed ? '✓ Done' : '⚠ Missing'}
-    </span>
-  </td>
-</tr>
+                      <td style={{ padding: '12px 16px', color: '#f0f4ff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.name}</td>
+                      <td style={{ padding: '12px 16px', color: 'rgba(240,244,255,0.45)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.completed ? 'Today' : '--'}</td>
+                      <td style={{ padding: '12px 16px', color: row.score === 100 ? '#34d399' : row.score !== null ? '#f59e0b' : '#f87171', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{row.score !== null ? `${row.score}%` : '--'}</td>
+                      <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', width: '140px' }}>
+                        <div style={{ height: '6px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)' }}>
+                          <div style={{ height: '100%', width: `${row.score ?? 0}%`, borderRadius: '99px', background: row.score === 100 ? '#34d399' : row.score !== null ? '#f59e0b' : '#f87171' }} />
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: row.completed ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: row.completed ? '#34d399' : '#f87171', border: `1px solid ${row.completed ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'}` }}>
+                          {row.completed ? '✓ Done' : '⚠ Missing'}
+                        </span>
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -481,7 +531,7 @@ function AdminDashboard() {
           <div>
             <div style={{ marginBottom: '32px' }}>
               <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>Compliance Dashboard</h1>
-              <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Birds-eye view – SEC/FINRA audit readiness for Feb 2026</p>
+              <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Birds-eye view – SEC/FINRA audit readiness</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '24px' }}>
               {[{ label: 'Overall Completion', val: '87%', sub: 'up 12% from Jan', color: '#34d399' }, { label: 'At Risk', val: '4', sub: 'employees below 60%', color: '#f87171' }, { label: 'Modules Deployed', val: '9', sub: 'across 3 departments', color: '#4f8ef7' }, { label: 'Next Audit', val: 'Apr 15', sub: '50 days away', color: '#f0f4ff' }].map(s => (
