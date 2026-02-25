@@ -329,7 +329,7 @@ useEffect(() => {
               <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Team quiz results for today – Feb 24, 2026</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '24px' }}>
-              {[{ label: 'Completed', val: '14', sub: 'of 18 members', color: '#34d399' }, { label: 'Avg Score', val: '81%', sub: 'up 4% from last week', color: '#4f8ef7' }, { label: 'Not Started', val: '4', sub: 'reminders sent', color: '#f59e0b' }, { label: "Today's Topic", val: 'SEC 17a-4', sub: 'record retention', color: '#f0f4ff' }].map(s => (
+              {[{ label: 'Completed', val: pulseData ? `${pulseData.completed}` : '--', sub: `of ${pulseData?.total ?? '--'} members`, color: '#34d399' }, { label: 'Avg Score', val: pulseData ? `${pulseData.avgScore}%` : '--', sub: 'today', color: '#4f8ef7' }, { label: 'Not Started', val: pulseData ? `${(pulseData.total ?? 0) - (pulseData.completed ?? 0)}` : '--', sub: 'reminders sent', color: '#f59e0b' }, { label: "Today's Topic", val: 'SEC 17a-4', sub: 'record retention', color: '#f0f4ff' }].map(s => (
                 <div key={s.label} style={card}>
                   <div style={{ fontSize: '11px', color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>{s.label}</div>
                   <div style={{ fontSize: s.label === "Today's Topic" ? '20px' : '34px', fontWeight: 700, color: s.color, letterSpacing: '-1px' }}>{s.val}</div>
