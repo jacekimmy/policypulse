@@ -89,10 +89,23 @@ async function sendChat() {
     }
   }
 
-  function answerQuiz(correct: boolean) {
+ async function answerQuiz(correct: boolean) {
     if (quizDone) return
     setQuizDone(true)
     setQuizCorrect(correct)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await fetch('/api/quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: user.id,
+        question_id: 'sec-17a-4',
+        correct,
+        score: correct ? 100 : 0
+      })
+    })
   }
 
   const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '24px' }
