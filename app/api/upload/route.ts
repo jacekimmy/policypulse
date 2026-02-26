@@ -21,19 +21,31 @@ function chunkText(text: string, size = 500): string[] {
   return chunks
 }
 
+async function parsePDF(buffer: Buffer): Promise<string> {
+  const PDFParser = (await import('pdf2json')).default
+  return new Promise((resolve, reject) => {
+    const parser = new PDFParser()
+    parser.on('pdfParser_dataReady', (data: any) => {
+      const text = data.Pages.map((page: any) =>
+        page.Texts.map((t: any) => decodeURIComponent(t.R.map((r: any) => r.T).join(''))).join(' ')
+      ).join('\n')
+      resolve(text)
+    })
+    parser.on('pdfParser_dataError', reject)
+    parser.parseBuffer(buffer)
+  })
+}
+
 export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const file = formData.get('file') as File
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  
+
   let text = ''
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const pdfParse = require('pdf-parse')
-    const parsed = await pdfParse(buffer)
-    text = parsed.text
+    text = await parsePDF(buffer)
   } catch (e) {
     return NextResponse.json({ error: 'Failed to parse PDF' }, { status: 500 })
   }
