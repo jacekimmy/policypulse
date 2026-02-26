@@ -30,10 +30,11 @@ export async function POST(req: NextRequest) {
   
   let text = ''
   try {
-    const pdfParse = (await import('pdf-parse')).default
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pdfParse = require('pdf-parse')
     const parsed = await pdfParse(buffer)
     text = parsed.text
-  } catch {
+  } catch (e) {
     return NextResponse.json({ error: 'Failed to parse PDF' }, { status: 500 })
   }
 
