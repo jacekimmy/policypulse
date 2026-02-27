@@ -36,7 +36,7 @@ async function findRelevantChunks(question: string): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
-  const { question } = await req.json()
+  const { question, user_id } = await req.json()
 
   const context = await findRelevantChunks(question)
 
