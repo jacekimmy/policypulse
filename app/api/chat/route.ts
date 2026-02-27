@@ -58,7 +58,12 @@ export async function POST(req: NextRequest) {
   const citation = citationMatch ? citationMatch[1] : null
   const answer = text.replace(/\[Source: .+?\]/, '').trim()
 
-  await supabase.from('chat_logs').insert({
+const authHeader = req.headers.get('authorization') ?? ''
+const token = authHeader.replace('Bearer ', '')
+const { data: { user } } = await supabase.auth.getUser(token)
+
+await supabase.from('chat_logs').insert({
+    user_id: user?.id ?? null,
     question,
     answer,
     citation,
