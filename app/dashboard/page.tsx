@@ -32,6 +32,7 @@ export default function Dashboard() {
 
 // ── WORKER ──────────────────────────────────────────────
 function WorkerDashboard() {
+    const [userId, setUserId] = useState<string | null>(null)
   const [page, setPage] = useState('chat')
   const [messages, setMessages] = useState<Array<{ role: string; text: string; citation?: string | null }>>([
     { role: 'ai', text: "Hi! I'm your Policy Assistant. I've read the full Employee Handbook and can answer any question instantly, with an exact page citation every time. What do you need to know?" },
@@ -61,6 +62,7 @@ function WorkerDashboard() {
         .eq('user_id', user.id)
         .order('step_number')
       setOnboardingSteps(data ?? [])
+      setUserId(user.id)
       setOnboardingLoading(false)
     }
     loadOnboarding()
@@ -83,13 +85,11 @@ function WorkerDashboard() {
     setInput('')
     setTyping(true)
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
       const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, user_id: user?.id ?? null })
-      })
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ question, user_id: userId })
+})
       const { answer, citation } = await res.json()
       setMessages(m => [...m, { role: 'ai', text: answer, citation }])
     } catch {
