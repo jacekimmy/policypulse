@@ -482,6 +482,16 @@ function ManagerDashboard() {
 // ── ADMIN ──────────────────────────────────────────────
 function AdminDashboard() {
   const [page, setPage] = useState('dashboard')
+  const [auditLogs, setAuditLogs] = useState<Array<{ time: string; user: string; action: string }>>([])
+
+useEffect(() => {
+  async function loadAudit() {
+    const res = await fetch('/api/audit')
+    const data = await res.json()
+    setAuditLogs(data.logs ?? [])
+  }
+  loadAudit()
+}, [])
 
   const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '24px' }
   const navActive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: '#4f8ef7', background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.25)' } as React.CSSProperties
@@ -489,16 +499,9 @@ function AdminDashboard() {
 
   const atRisk = [{ name: 'Alex B.', dept: 'IT/Support', score: '42%', risk: 'Critical', color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.2)' }, { name: 'Chen W.', dept: 'Operations', score: '51%', risk: 'High', color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.2)' }, { name: 'Nina G.', dept: 'IT/Support', score: '58%', risk: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)' }, { name: 'Raj M.', dept: 'Compliance', score: '59%', risk: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)' }]
 
-  const logs = [
-    { time: '2026-02-24 11:47', user: 'sarah.k@firm.com', action: 'Completed Daily Quiz – SEC 17a-4 – Score: 100%' },
-    { time: '2026-02-24 11:32', user: 'marcus.t@firm.com', action: 'Completed Daily Quiz – SEC 17a-4 – Score: 100%' },
-    { time: '2026-02-24 10:47', user: 'jordan.d@firm.com', action: 'Policy Chat query: "Travel reimbursement international hotels"' },
-    { time: '2026-02-24 10:31', user: 'jordan.d@firm.com', action: 'Completed Daily Quiz – SEC 17a-4 – Score: 75%' },
-    { time: '2026-02-24 10:12', user: 'priya.r@firm.com', action: 'Acknowledged FINRA Compliance Module v2.1' },
-    { time: '2026-02-24 09:55', user: 'r.miller@firm.com', action: 'Manager reviewed Gap Detection report – Travel flagged' },
-    { time: '2026-02-24 09:02', user: 'sarah.k@firm.com', action: 'Policy Chat query: "SEC Rule 15c3-3 customer protection"' },
-    { time: '2026-02-23 17:18', user: 'admin@firm.com', action: 'Audit log exported for Feb 1-23, 2026 – PDF generated' },
-  ]
+
+
+
 
   const sentiment = [
     { topic: 'Travel & Expenses', count: 44, pct: 88, color: '#f87171' },
@@ -589,9 +592,9 @@ function AdminDashboard() {
             </div>
             <div style={card}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Activity Log – Last 24 Hours</div>
-              {logs.map((log, i) => (
+              {auditLogs.map((log, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '12px', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '13px' }}>
-                  <div style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(240,244,255,0.25)', minWidth: '140px' }}>{log.time}</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(240,244,255,0.25)', minWidth: '140px' }}>{new Date(log.time).toLocaleString()}</div>
                   <div style={{ color: '#4f8ef7', fontWeight: 500, minWidth: '140px' }}>{log.user}</div>
                   <div style={{ color: 'rgba(240,244,255,0.45)', flex: 1 }}>{log.action}</div>
                 </div>
