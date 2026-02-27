@@ -62,13 +62,14 @@ const authHeader = req.headers.get('authorization') ?? ''
 const token = authHeader.replace('Bearer ', '')
 const { data: { user } } = await supabase.auth.getUser(token)
 
-await supabase.from('chat_logs').insert({
-    user_id: user?.id ?? null,
+const { error: logError } = await supabase.from('chat_logs').insert({
+    user_id: user_id ?? null,
     question,
     answer,
     citation,
     escalated: !context
   })
+if (logError) console.error('chat_logs insert error:', logError)
 
   return NextResponse.json({ answer, citation })
 }
