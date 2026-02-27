@@ -85,10 +85,12 @@ function WorkerDashboard() {
     setInput('')
     setTyping(true)
     try {
-      const res = await fetch('/api/chat', {
+      const supabase = createClient()
+const { data: { user } } = await supabase.auth.getUser()
+const res = await fetch('/api/chat', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ question, user_id: userId })
+  body: JSON.stringify({ question, user_id: user?.id ?? null })
 })
       const { answer, citation } = await res.json()
       setMessages(m => [...m, { role: 'ai', text: answer, citation }])
