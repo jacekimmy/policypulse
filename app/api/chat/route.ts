@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
   const citationMatch = text.match(/\[Source: (.+?)\]/)
   const citation = citationMatch ? citationMatch[1] : null
   const answer = text.replace(/\[Source: .+?\]/, '').trim()
+  const escalated = !context || answer.toLowerCase().includes("i don't know") || answer.toLowerCase().includes("i cannot") || answer.toLowerCase().includes("not in the") || answer.toLowerCase().includes("no information")
 
 const authHeader = req.headers.get('authorization') ?? ''
 const token = authHeader.replace('Bearer ', '')
@@ -67,7 +68,7 @@ const { error: logError } = await supabase.from('chat_logs').insert({
     question,
     answer,
     citation,
-    escalated: !context
+    escalated,
   })
 if (logError) console.error('chat_logs insert error:', logError)
 

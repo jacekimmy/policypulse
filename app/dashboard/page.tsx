@@ -32,19 +32,17 @@ export default function Dashboard() {
 
 // ── WORKER ──────────────────────────────────────────────
 function WorkerDashboard() {
-    const [userId, setUserId] = useState<string | null>(null)
   const [page, setPage] = useState('chat')
   const [messages, setMessages] = useState<Array<{ role: string; text: string; citation?: string | null }>>([
     { role: 'ai', text: "Hi! I'm your Policy Assistant. I've read the full Employee Handbook and can answer any question instantly, with an exact page citation every time. What do you need to know?" },
   ])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
-  // Onboarding
   const [onboardingSteps, setOnboardingSteps] = useState<Array<{ step_number: number; label: string; completed: boolean; completed_at: string | null }>>([])
   const [onboardingLoading, setOnboardingLoading] = useState(true)
 
-  // Quiz
   const [questions, setQuestions] = useState<any[]>([])
   const [quizIndex, setQuizIndex] = useState(0)
   const [answers, setAnswers] = useState<Array<{ correct: boolean; selected: string }>>([])
@@ -56,13 +54,13 @@ function WorkerDashboard() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+      setUserId(user.id)
       const { data } = await supabase
         .from('onboarding_steps')
         .select('*')
         .eq('user_id', user.id)
         .order('step_number')
       setOnboardingSteps(data ?? [])
-      setUserId(user.id)
       setOnboardingLoading(false)
     }
     loadOnboarding()
@@ -85,13 +83,11 @@ function WorkerDashboard() {
     setInput('')
     setTyping(true)
     try {
-      const supabase = createClient()
-const { data: { user } } = await supabase.auth.getUser()
-const res = await fetch('/api/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ question, user_id: user?.id ?? null })
-})
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, user_id: userId })
+      })
       const { answer, citation } = await res.json()
       setMessages(m => [...m, { role: 'ai', text: answer, citation }])
     } catch {
@@ -108,7 +104,6 @@ const res = await fetch('/api/chat', {
     setAnswers(newAnswers)
 
     if (quizIndex + 1 >= questions.length) {
-      // Quiz complete – save result
       setQuizDone(true)
       const totalCorrect = newAnswers.filter(a => a.correct).length
       const score = Math.round((totalCorrect / questions.length) * 100)
@@ -148,16 +143,14 @@ const res = await fetch('/api/chat', {
         </div>
         <div style={{ fontSize: '10px', color: 'rgba(240,244,255,0.25)', textTransform: 'uppercase', letterSpacing: '1.2px', padding: '8px 14px 4px' }}>Worker</div>
         <div style={page === 'chat' ? navActive : navInactive} onClick={() => setPage('chat')}><span>💬</span> Policy Chat</div>
-        <div style={page === 'onboarding' ? navActive : navInactive} onClick={() => setPage('onboarding')}><span>✅</span> My Onboarding</div>
         <div style={page === 'quiz' ? navActive : navInactive} onClick={() => setPage('quiz')}><span>🧠</span> Daily Quiz</div>
-        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.2)', fontSize: '12px', color: '#34d399', fontWeight: 600 }}>👷 Worker</div>
         </div>
       </aside>
 
       <main style={{ flex: 1, padding: '36px 40px', overflowY: 'auto' }}>
 
-        {/* CHAT */}
         {page === 'chat' && (
           <div>
             <div style={{ marginBottom: '32px' }}>
@@ -169,7 +162,7 @@ const res = await fetch('/api/chat', {
                 {messages.map((m, i) => (
                   <div key={i} style={{ display: 'flex', gap: '10px', flexDirection: m.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-start' }}>
                     <div style={{ width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', background: m.role === 'ai' ? 'linear-gradient(135deg, #4f8ef7, #a78bfa)' : 'rgba(255,255,255,0.1)' }}>
-                      {m.role === 'ai' ? '⚡' : 'JD'}
+                      {m.role === 'ai' ? '⚡' : 'You'}
                     </div>
                     <div style={{ maxWidth: '72%' }}>
                       <div style={{ padding: '12px 16px', borderRadius: '14px', fontSize: '14px', lineHeight: 1.6, background: m.role === 'ai' ? 'rgba(255,255,255,0.05)' : 'rgba(79,142,247,0.15)', border: `1px solid ${m.role === 'ai' ? 'rgba(255,255,255,0.1)' : 'rgba(79,142,247,0.25)'}` }}>
@@ -216,46 +209,6 @@ const res = await fetch('/api/chat', {
           </div>
         )}
 
-        {/* ONBOARDING */}
-        {page === 'onboarding' && (
-          <div>
-            <div style={{ marginBottom: '32px' }}>
-              <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>My Onboarding</h1>
-              <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Track your compliance training progress.</p>
-            </div>
-            <div style={card}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Completion Progress</div>
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                  <span style={{ color: 'rgba(240,244,255,0.45)' }}>Overall</span>
-                  <span style={{ color: '#34d399', fontWeight: 600 }}>
-                    {onboardingSteps.length > 0 ? `${Math.round((onboardingSteps.filter(s => s.completed).length / onboardingSteps.length) * 100)}%` : '0%'}
-                  </span>
-                </div>
-                <div style={{ height: '8px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)' }}>
-                  <div style={{ height: '100%', width: onboardingSteps.length > 0 ? `${Math.round((onboardingSteps.filter(s => s.completed).length / onboardingSteps.length) * 100)}%` : '0%', borderRadius: '99px', background: 'linear-gradient(90deg, #34d399, #6ee7b7)' }} />
-                </div>
-              </div>
-              {onboardingLoading ? (
-                <div style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px' }}>Loading...</div>
-              ) : onboardingSteps.map((step) => (
-                <div key={step.step_number} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, background: step.completed ? 'rgba(52,211,153,0.15)' : 'rgba(255,255,255,0.05)', color: step.completed ? '#34d399' : 'rgba(240,244,255,0.25)', border: `1px solid ${step.completed ? 'rgba(52,211,153,0.25)' : 'rgba(255,255,255,0.1)'}` }}>
-                    {step.completed ? '✓' : step.step_number}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: 500 }}>{step.label}</div>
-                    <div style={{ fontSize: '12px', color: 'rgba(240,244,255,0.45)', marginTop: '2px' }}>
-                      {step.completed ? `Completed ${new Date(step.completed_at!).toLocaleDateString()}` : 'Not started'}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* QUIZ */}
         {page === 'quiz' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
@@ -277,10 +230,8 @@ const res = await fetch('/api/chat', {
             {!quizLoading && !quizDone && currentQuestion && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
                 <div style={card}>
-                  <div style={{ marginBottom: '8px' }}>
-                    <div style={{ height: '4px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)', marginBottom: '16px' }}>
-                      <div style={{ height: '100%', width: `${((quizIndex) / questions.length) * 100}%`, borderRadius: '99px', background: '#4f8ef7', transition: 'width 0.3s' }} />
-                    </div>
+                  <div style={{ height: '4px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)', marginBottom: '16px' }}>
+                    <div style={{ height: '100%', width: `${(quizIndex / questions.length) * 100}%`, borderRadius: '99px', background: '#4f8ef7', transition: 'width 0.3s' }} />
                   </div>
                   <div style={{ fontSize: '11px', color: 'rgba(240,244,255,0.25)', textTransform: 'uppercase', letterSpacing: '.8px', marginBottom: '12px' }}>{currentQuestion.topic}</div>
                   <div style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1.5, marginBottom: '20px' }}>{currentQuestion.question}</div>
@@ -339,6 +290,7 @@ const res = await fetch('/api/chat', {
 function ManagerDashboard() {
   const [page, setPage] = useState('pulse')
   const [pulseData, setPulseData] = useState<any>(null)
+  const [escalations, setEscalations] = useState<any[]>([])
 
   useEffect(() => {
     async function loadPulse() {
@@ -347,6 +299,15 @@ function ManagerDashboard() {
       setPulseData(data)
     }
     loadPulse()
+  }, [])
+
+  useEffect(() => {
+    async function loadEscalations() {
+      const res = await fetch('/api/escalations')
+      const data = await res.json()
+      setEscalations(data.escalations ?? [])
+    }
+    loadEscalations()
   }, [])
 
   const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '24px' }
@@ -428,7 +389,7 @@ function ManagerDashboard() {
               <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>AI-detected policy areas your team is struggling with.</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-              {[{ icon: '🚨', title: 'Travel Reimbursement – High Confusion', desc: '12 questions asked this week. Workers unclear on international limits.', color: '#f59e0b' }, { icon: '⚠️', title: 'Resignation Notice Period – Trending', desc: '7 questions in 3 days. Possible team anxiety signal.', color: '#f59e0b' }].map(a => (
+              {[{ icon: '🚨', title: 'Travel Reimbursement – High Confusion', desc: '12 questions asked this week. Workers unclear on international limits.' }, { icon: '⚠️', title: 'Resignation Notice Period – Trending', desc: '7 questions in 3 days. Possible team anxiety signal.' }].map(a => (
                 <div key={a.title} style={{ padding: '14px 18px', borderRadius: '10px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ fontSize: '18px' }}>{a.icon}</div>
                   <div style={{ flex: 1 }}>
@@ -462,17 +423,27 @@ function ManagerDashboard() {
               <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Questions the AI could not answer – sent directly to you.</p>
             </div>
             <div style={card}>
-              {[{ name: 'Jordan D.', time: '10:47 AM', q: 'If my manager verbally approves an expense but then leaves the company, how do I get reimbursed without a paper trail?' }, { name: 'Chen W.', time: 'Yesterday 4:12 PM', q: 'Does the resignation policy apply if I am transitioning to a contractor role with the same firm?' }].map(e => (
-                <div key={e.name} style={{ padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              {escalations.length === 0 && (
+                <div style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', padding: '16px 0' }}>No unresolved escalations.</div>
+              )}
+              {escalations.map(e => (
+                <div key={e.id} style={{ padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{e.name} – {e.time}</div>
-                    <span style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }}>Unresolved</span>
+                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{e.name} – {new Date(e.time).toLocaleString()}</div>
+                    <span style={{ padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: e.resolved ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: e.resolved ? '#34d399' : '#f87171', border: `1px solid ${e.resolved ? 'rgba(52,211,153,0.2)' : 'rgba(248,113,113,0.2)'}` }}>
+                      {e.resolved ? 'Resolved' : 'Unresolved'}
+                    </span>
                   </div>
-                  <div style={{ fontSize: '13px', color: 'rgba(240,244,255,0.45)', marginBottom: '12px' }}>"{e.q}"</div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button style={{ padding: '6px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f0f4ff', fontFamily: 'sans-serif' }}>Reply</button>
-                    <button style={{ padding: '6px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(52,211,153,0.25)', background: 'rgba(52,211,153,0.08)', color: '#34d399', fontFamily: 'sans-serif' }}>Mark Resolved</button>
-                  </div>
+                  <div style={{ fontSize: '13px', color: 'rgba(240,244,255,0.45)', marginBottom: '12px' }}>"{e.question}"</div>
+                  {!e.resolved && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button style={{ padding: '6px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#f0f4ff', fontFamily: 'sans-serif' }}>Reply</button>
+                      <button onClick={async () => {
+                        await fetch('/api/escalations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: e.id }) })
+                        setEscalations(prev => prev.map(x => x.id === e.id ? { ...x, resolved: true } : x))
+                      }} style={{ padding: '6px 14px', borderRadius: '7px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(52,211,153,0.25)', background: 'rgba(52,211,153,0.08)', color: '#34d399', fontFamily: 'sans-serif' }}>Mark Resolved</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -488,24 +459,20 @@ function AdminDashboard() {
   const [page, setPage] = useState('dashboard')
   const [auditLogs, setAuditLogs] = useState<Array<{ time: string; user: string; action: string }>>([])
 
-useEffect(() => {
-  async function loadAudit() {
-    const res = await fetch('/api/audit')
-    const data = await res.json()
-    setAuditLogs(data.logs ?? [])
-  }
-  loadAudit()
-}, [])
+  useEffect(() => {
+    async function loadAudit() {
+      const res = await fetch('/api/audit')
+      const data = await res.json()
+      setAuditLogs(data.logs ?? [])
+    }
+    loadAudit()
+  }, [])
 
   const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '24px' }
   const navActive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: '#4f8ef7', background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.25)' } as React.CSSProperties
   const navInactive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: 'rgba(240,244,255,0.45)', background: 'transparent', border: '1px solid transparent' } as React.CSSProperties
 
   const atRisk = [{ name: 'Alex B.', dept: 'IT/Support', score: '42%', risk: 'Critical', color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.2)' }, { name: 'Chen W.', dept: 'Operations', score: '51%', risk: 'High', color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.2)' }, { name: 'Nina G.', dept: 'IT/Support', score: '58%', risk: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)' }, { name: 'Raj M.', dept: 'Compliance', score: '59%', risk: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)' }]
-
-
-
-
 
   const sentiment = [
     { topic: 'Travel & Expenses', count: 44, pct: 88, color: '#f87171' },
@@ -595,11 +562,12 @@ useEffect(() => {
               <button style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: '1px solid rgba(79,142,247,0.25)', background: 'rgba(79,142,247,0.1)', color: '#4f8ef7', fontFamily: 'sans-serif' }}>⬇ Export PDF Report</button>
             </div>
             <div style={card}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Activity Log – Last 24 Hours</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Activity Log</div>
+              {auditLogs.length === 0 && <div style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px' }}>No activity yet.</div>}
               {auditLogs.map((log, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '12px', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '13px' }}>
-                  <div style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(240,244,255,0.25)', minWidth: '140px' }}>{new Date(log.time).toLocaleString()}</div>
-                  <div style={{ color: '#4f8ef7', fontWeight: 500, minWidth: '140px' }}>{log.user}</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(240,244,255,0.25)', minWidth: '160px' }}>{new Date(log.time).toLocaleString()}</div>
+                  <div style={{ color: '#4f8ef7', fontWeight: 500, minWidth: '160px' }}>{log.user}</div>
                   <div style={{ color: 'rgba(240,244,255,0.45)', flex: 1 }}>{log.action}</div>
                 </div>
               ))}
