@@ -520,6 +520,7 @@ function AdminDashboard() {
         <div style={page === 'dashboard' ? navActive : navInactive} onClick={() => setPage('dashboard')}><span>🛡️</span> Compliance Dashboard</div>
         <div style={page === 'logs' ? navActive : navInactive} onClick={() => setPage('logs')}><span>📋</span> Audit Logs</div>
         <div style={page === 'sentiment' ? navActive : navInactive} onClick={() => setPage('sentiment')}><span>📡</span> Sentiment Analytics</div>
+        <div style={page === 'invite' ? navActive : navInactive} onClick={() => setPage('invite')}><span>✉️</span> Invite Users</div>
         <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.2)', fontSize: '12px', color: '#4f8ef7', fontWeight: 600 }}>🛡️ Admin</div>
         </div>
@@ -633,7 +634,79 @@ function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {page === 'invite' && (
+          <div>
+            <div style={{ marginBottom: '32px' }}>
+              <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>Invite Users</h1>
+              <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Send an invite link to a new employee.</p>
+            </div>
+            <InviteForm />
+          </div>
+        )}
+
       </main>
+    </div>
+  )
+}
+
+function InviteForm() {
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState('worker')
+  const [status, setStatus] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function sendInvite() {
+    if (!email.trim()) return
+    setLoading(true)
+    setStatus('')
+    try {
+      const res = await fetch('/api/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, role })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setStatus(`Invite sent to ${email}`)
+        setEmail('')
+      } else {
+        setStatus(`Error: ${data.error}`)
+      }
+    } catch {
+      setStatus('Failed to send invite.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '24px' }
+
+  return (
+    <div style={{ ...card, maxWidth: '480px' }}>
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ fontSize: '12px', color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: '6px' }}>Email</label>
+        <input value={email} onChange={e => setEmail(e.target.value)} placeholder="employee@firm.com"
+          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px 16px', color: '#f0f4ff', fontFamily: 'sans-serif', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const }} />
+      </div>
+      <div style={{ marginBottom: '20px' }}>
+        <label style={{ fontSize: '12px', color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'block', marginBottom: '6px' }}>Role</label>
+        <select value={role} onChange={e => setRole(e.target.value)}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px 16px', color: '#f0f4ff', fontFamily: 'sans-serif', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const }}>
+          <option value="worker">Worker</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button onClick={sendInvite} disabled={loading}
+        style={{ width: '100%', padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #4f8ef7, #a78bfa)', color: 'white', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'sans-serif' }}>
+        {loading ? 'Sending...' : 'Send Invite'}
+      </button>
+      {status && (
+        <div style={{ marginTop: '14px', padding: '12px 16px', borderRadius: '10px', background: status.includes('Error') ? 'rgba(248,113,113,0.08)' : 'rgba(52,211,153,0.08)', border: `1px solid ${status.includes('Error') ? 'rgba(248,113,113,0.2)' : 'rgba(52,211,153,0.2)'}`, fontSize: '13px', color: status.includes('Error') ? '#f87171' : '#34d399' }}>
+          {status}
+        </div>
+      )}
     </div>
   )
 }
