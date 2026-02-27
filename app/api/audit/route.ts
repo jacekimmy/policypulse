@@ -1,27 +1,24 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function GET() {
-  // Get chat logs
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
   const { data: chats } = await supabase
     .from('chat_logs')
     .select('user_id, question, created_at')
     .order('created_at', { ascending: false })
     .limit(50)
 
-  // Get quiz results
   const { data: quizzes } = await supabase
     .from('quiz_results')
     .select('user_id, score, correct, completed_at')
     .order('completed_at', { ascending: false })
     .limit(50)
 
-  // Get profiles for user emails
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, email, full_name')
@@ -32,7 +29,6 @@ export async function GET() {
     return p?.email ?? p?.full_name ?? 'Unknown'
   }
 
-  // Merge into unified log
   const logs = [
     ...(chats ?? []).map(c => ({
       time: c.created_at,
