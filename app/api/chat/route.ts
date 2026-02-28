@@ -41,8 +41,13 @@ export async function POST(req: NextRequest) {
   const context = await findRelevantChunks(question)
 
   const systemPrompt = context
-    ? `You are a compliance policy assistant. Answer questions using ONLY the following policy content. Always cite the specific section you're referencing in this format: [Source: Section X.X - Topic Name]. If the answer isn't in the content, say so clearly.\n\nPolicy content:\n${context}`
-    : `You are a compliance policy assistant. No policy documents have been uploaded yet. Let the user know they need to upload their handbook first, but you can answer general compliance questions in the meantime.`
+    ? `You are a compliance policy assistant. Answer questions using ONLY the following policy content. Always cite the specific section you're referencing in this format: [Source: Section X.X - Topic Name].
+
+If the answer is not clearly covered in the policy content below, you must respond with exactly this phrase at the start: "ESCALATED:" followed by a brief message telling the employee their question has been sent to a manager.
+
+Policy content:
+${context}`
+    : `You are a compliance policy assistant. No policy documents have been uploaded yet. Respond with exactly: "ESCALATED: Your question has been sent to a manager who will reply shortly."`
 
   const completion = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
@@ -54,23 +59,26 @@ export async function POST(req: NextRequest) {
   })
 
   const text = completion.choices[0]?.message?.content ?? 'I could not generate a response.'
+  const escalated = text.trimStart().startsWith('ESCALATED:')
+
   const citationMatch = text.match(/\[Source: (.+?)\]/)
   const citation = citationMatch ? citationMatch[1] : null
-  const answer = text.replace(/\[Source: .+?\]/, '').trim()
-  const escalated = !context || answer.toLowerCase().includes("i don't know") || answer.toLowerCase().includes("i cannot") || answer.toLowerCase().includes("not in the") || answer.toLowerCase().includes("no information")
 
-const authHeader = req.headers.get('authorization') ?? ''
-const token = authHeader.replace('Bearer ', '')
-const { data: { user } } = await supabase.auth.getUser(token)
+  // Clean up the answer shown to the worker
+  const answer = escalated
+    ? text.replace(/^ESCALATED:\s*/i, '').replace(/\[Source: .+?\]/, '').trim()
+    : text.replace(/\[Source: .+?\]/, '').trim()
 
-const { error: logError } = await supabase.from('chat_logs').insert({
+  const { error: logError } = await supabase.from('chat_logs').insert({
     user_id: user_id ?? null,
     question,
     answer,
     citation,
     escalated,
+    resolved: false,
   })
-if (logError) console.error('chat_logs insert error:', logError)
 
-  return NextResponse.json({ answer, citation })
+  if (logError) console.error('chat_logs insert error:', logError)
+
+  return NextResponse.json({ answer, citation, escalated })
 }
