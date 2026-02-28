@@ -458,6 +458,7 @@ function ManagerDashboard() {
 function AdminDashboard() {
   const [page, setPage] = useState('dashboard')
   const [auditLogs, setAuditLogs] = useState<Array<{ time: string; user: string; action: string }>>([])
+  const [adminStats, setAdminStats] = useState<{ completion: number; atRiskCount: number; atRisk: Array<{ name: string; score: string; risk: string }> } | null>(null)
 
   useEffect(() => {
     async function loadAudit() {
@@ -468,20 +469,18 @@ function AdminDashboard() {
     loadAudit()
   }, [])
 
+  useEffect(() => {
+    async function loadStats() {
+      const res = await fetch('/api/admin-stats')
+      const data = await res.json()
+      setAdminStats(data)
+    }
+    loadStats()
+  }, [])
+
   const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '24px' }
   const navActive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: '#4f8ef7', background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.25)' } as React.CSSProperties
   const navInactive = { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', color: 'rgba(240,244,255,0.45)', background: 'transparent', border: '1px solid transparent' } as React.CSSProperties
-
-  const atRisk = [{ name: 'Alex B.', dept: 'IT/Support', score: '42%', risk: 'Critical', color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.2)' }, { name: 'Chen W.', dept: 'Operations', score: '51%', risk: 'High', color: '#f87171', bg: 'rgba(248,113,113,0.12)', border: 'rgba(248,113,113,0.2)' }, { name: 'Nina G.', dept: 'IT/Support', score: '58%', risk: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)' }, { name: 'Raj M.', dept: 'Compliance', score: '59%', risk: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.2)' }]
-
-  const sentiment = [
-    { topic: 'Travel & Expenses', count: 44, pct: 88, color: '#f87171' },
-    { topic: 'Resignation / Offboarding', count: 29, pct: 58, color: '#f59e0b' },
-    { topic: 'Remote Work Policy', count: 24, pct: 48, color: '#4f8ef7' },
-    { topic: 'FINRA / SEC Rules', count: 18, pct: 36, color: '#34d399' },
-    { topic: 'PTO & Leave', count: 14, pct: 28, color: '#4f8ef7' },
-    { topic: 'IT / Equipment', count: 10, pct: 20, color: '#34d399' },
-  ]
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#060912', fontFamily: 'sans-serif', color: '#f0f4ff' }}>
@@ -507,8 +506,12 @@ function AdminDashboard() {
               <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>Compliance Dashboard</h1>
               <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Birds-eye view – SEC/FINRA audit readiness</p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '24px' }}>
-              {[{ label: 'Overall Completion', val: '87%', sub: 'up 12% from Jan', color: '#34d399' }, { label: 'At Risk', val: '4', sub: 'employees below 60%', color: '#f87171' }, { label: 'Modules Deployed', val: '9', sub: 'across 3 departments', color: '#4f8ef7' }, { label: 'Next Audit', val: 'Apr 15', sub: '50 days away', color: '#f0f4ff' }].map(s => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '16px', marginBottom: '24px' }}>
+              {[
+                { label: 'Overall Completion', val: adminStats ? `${adminStats.completion}%` : '--', sub: 'avg quiz score', color: '#34d399' },
+                { label: 'At Risk', val: adminStats ? `${adminStats.atRiskCount}` : '--', sub: 'employees below 60%', color: '#f87171' },
+                { label: 'Modules Deployed', val: '9', sub: 'across 3 departments', color: '#4f8ef7' },
+              ].map(s => (
                 <div key={s.label} style={card}>
                   <div style={{ fontSize: '11px', color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>{s.label}</div>
                   <div style={{ fontSize: s.label === 'Next Audit' ? '22px' : '34px', fontWeight: 700, color: s.color, letterSpacing: '-1px' }}>{s.val}</div>
@@ -516,38 +519,30 @@ function AdminDashboard() {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div style={card}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Completion by Department</div>
-                {[{ dept: 'Trading Desk', pct: 94, color: '#34d399' }, { dept: 'Operations', pct: 88, color: '#4f8ef7' }, { dept: 'Compliance', pct: 79, color: '#f59e0b' }, { dept: 'IT / Support', pct: 61, color: '#f87171' }].map(d => (
-                  <div key={d.dept} style={{ marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                      <span style={{ color: 'rgba(240,244,255,0.45)' }}>{d.dept}</span>
-                      <span style={{ color: d.color, fontWeight: 600 }}>{d.pct}%</span>
-                    </div>
-                    <div style={{ height: '6px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)' }}>
-                      <div style={{ height: '100%', width: `${d.pct}%`, borderRadius: '99px', background: d.color }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={card}>
+            <div style={card}>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>At-Risk Employees</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead><tr>{['Name', 'Dept', 'Score', 'Risk'].map(h => <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(240,244,255,0.25)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{h}</th>)}</tr></thead>
-                  <tbody>
-                    {atRisk.map(r => (
-                      <tr key={r.name}>
-                        <td style={{ padding: '10px 12px', color: '#f0f4ff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{r.name}</td>
-                        <td style={{ padding: '10px 12px', color: 'rgba(240,244,255,0.45)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{r.dept}</td>
-                        <td style={{ padding: '10px 12px', color: r.color, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{r.score}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}><span style={{ padding: '3px 8px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: r.bg, color: r.color, border: `1px solid ${r.border}` }}>{r.risk}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {!adminStats || adminStats.atRisk.length === 0 ? (
+                  <div style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px' }}>No at-risk employees.</div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead><tr>{['Name', 'Score', 'Risk'].map(h => <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', color: 'rgba(240,244,255,0.25)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {adminStats.atRisk.map(r => {
+                        const color = r.risk === 'Medium' ? '#f59e0b' : '#f87171'
+                        const bg = r.risk === 'Medium' ? 'rgba(245,158,11,0.12)' : 'rgba(248,113,113,0.12)'
+                        const border = r.risk === 'Medium' ? 'rgba(245,158,11,0.2)' : 'rgba(248,113,113,0.2)'
+                        return (
+                          <tr key={r.name}>
+                            <td style={{ padding: '10px 12px', color: '#f0f4ff', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{r.name}</td>
+                            <td style={{ padding: '10px 12px', color, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{r.score}</td>
+                            <td style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}><span style={{ padding: '3px 8px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, background: bg, color, border: `1px solid ${border}` }}>{r.risk}</span></td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
-            </div>
           </div>
         )}
 
@@ -574,7 +569,6 @@ function AdminDashboard() {
           </div>
         )}
 
-        
         {page === 'invite' && (
           <div>
             <div style={{ marginBottom: '32px' }}>
