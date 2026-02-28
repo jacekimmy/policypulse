@@ -295,6 +295,8 @@ function WorkerDashboard() {
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [myQuestions, setMyQuestions] = useState<any[]>([])
+const [questionsLoading, setQuestionsLoading] = useState(true)
 
   const [questions, setQuestions] = useState<any[]>([])
   const [quizIndex, setQuizIndex] = useState(0)
@@ -306,7 +308,13 @@ function WorkerDashboard() {
     async function loadUser() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) setUserId(user.id)
+      if (user) {
+  setUserId(user.id)
+  const res = await fetch(`/api/my-questions?user_id=${user.id}`)
+  const data = await res.json()
+  setMyQuestions(data.questions ?? [])
+  setQuestionsLoading(false)
+}
     }
     loadUser()
   }, [])
@@ -388,6 +396,14 @@ function WorkerDashboard() {
           <div className={`glass-nav-item ${page === 'quiz' ? 'glass-nav-active' : ''}`} onClick={() => setPage('quiz')}>
             <span>🎯</span> Daily Quiz
           </div>
+          <div className={`glass-nav-item ${page === 'questions' ? 'glass-nav-active' : ''}`} onClick={() => setPage('questions')}>
+  <span>📬</span> My Questions
+  {myQuestions.filter(q => q.resolved && q.manager_reply).length > 0 && (
+    <span style={{ marginLeft: 'auto', background: '#2c5a30', color: '#fff', borderRadius: '100px', fontSize: '10px', fontWeight: 700, padding: '2px 7px' }}>
+      {myQuestions.filter(q => q.resolved && q.manager_reply).length}
+    </span>
+  )}
+</div>
 
           <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid rgba(122,90,50,0.12)' }}>
             <div style={{ padding: '10px 14px', borderRadius: '12px', background: 'rgba(122,158,126,0.12)', border: '1px solid rgba(122,158,126,0.3)', fontSize: '12px', color: '#2c5a30', fontWeight: 600 }}>
@@ -509,6 +525,45 @@ function WorkerDashboard() {
               )}
             </div>
           )}
+          {page === 'questions' && (
+  <div>
+    <div style={{ marginBottom: '28px' }}>
+      <h1 className="playfair" style={{ fontSize: '32px', fontWeight: 700, color: '#2c2415', letterSpacing: '-0.5px', marginBottom: '6px' }}>My Questions</h1>
+      <p style={{ color: '#7a6a55', fontSize: '14px' }}>Questions you asked that the AI couldn't answer. Manager replies appear here.</p>
+    </div>
+    <div className="glass-card" style={{ padding: '24px' }}>
+      {questionsLoading && <div style={{ color: '#7a6a55', fontSize: '14px' }}>Loading...</div>}
+      {!questionsLoading && myQuestions.length === 0 && (
+        <div style={{ color: '#7a6a55', fontSize: '14px' }}>No escalated questions yet.</div>
+      )}
+      {myQuestions.map(q => (
+        <div key={q.id} style={{ padding: '20px 0', borderBottom: '1px solid rgba(122,90,50,0.08)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ fontSize: '11px', fontFamily: 'monospace', color: '#b0976c' }}>
+              {new Date(q.created_at).toLocaleDateString()}
+            </div>
+            <span className={`badge ${q.resolved ? 'badge-green' : 'badge-amber'}`}>
+              {q.resolved ? '✓ Answered' : '⏳ Pending'}
+            </span>
+          </div>
+          <div style={{ fontSize: '14px', color: '#2c2415', fontWeight: 500, marginBottom: '12px', padding: '12px 16px', background: 'rgba(255,255,255,0.4)', borderRadius: '10px', fontStyle: 'italic', border: '1px solid rgba(255,255,255,0.6)' }}>
+            "{q.question}"
+          </div>
+          {q.manager_reply ? (
+            <div style={{ padding: '14px 18px', borderRadius: '12px', background: 'rgba(90,138,94,0.08)', border: '1px solid rgba(90,138,94,0.25)' }}>
+              <div style={{ fontSize: '11px', color: '#2c5a30', fontWeight: 700, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                {q.manager_name ?? 'Manager'} replied {q.replied_at ? `· ${new Date(q.replied_at).toLocaleDateString()}` : ''}
+              </div>
+              <div style={{ fontSize: '14px', color: '#2c2415', lineHeight: 1.6 }}>{q.manager_reply}</div>
+            </div>
+          ) : (
+            <div style={{ fontSize: '13px', color: '#b0976c' }}>Waiting for a manager to reply...</div>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
         </main>
       </div>
     </>
