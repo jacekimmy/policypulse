@@ -493,7 +493,6 @@ function AdminDashboard() {
         <div style={{ fontSize: '10px', color: 'rgba(240,244,255,0.25)', textTransform: 'uppercase', letterSpacing: '1.2px', padding: '8px 14px 4px' }}>Admin</div>
         <div style={page === 'dashboard' ? navActive : navInactive} onClick={() => setPage('dashboard')}><span>🛡️</span> Compliance Dashboard</div>
         <div style={page === 'logs' ? navActive : navInactive} onClick={() => setPage('logs')}><span>📋</span> Audit Logs</div>
-        <div style={page === 'sentiment' ? navActive : navInactive} onClick={() => setPage('sentiment')}><span>📡</span> Sentiment Analytics</div>
         <div style={page === 'invite' ? navActive : navInactive} onClick={() => setPage('invite')}><span>✉️</span> Invite Users</div>
         <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.2)', fontSize: '12px', color: '#4f8ef7', fontWeight: 600 }}>🛡️ Admin</div>
@@ -575,41 +574,7 @@ function AdminDashboard() {
           </div>
         )}
 
-        {page === 'sentiment' && (
-          <div>
-            <div style={{ marginBottom: '32px' }}>
-              <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>Sentiment Analytics</h1>
-              <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>What your office is actually worried about – anonymized.</p>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div style={card}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Top Query Topics</div>
-                {sentiment.map(s => (
-                  <div key={s.topic} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                    <div style={{ fontSize: '13px', minWidth: '170px', color: 'rgba(240,244,255,0.45)' }}>{s.topic}</div>
-                    <div style={{ flex: 1, height: '6px', borderRadius: '99px', background: 'rgba(255,255,255,0.08)' }}>
-                      <div style={{ height: '100%', width: `${s.pct}%`, borderRadius: '99px', background: s.color }} />
-                    </div>
-                    <div style={{ fontSize: '12px', fontFamily: 'monospace', color: 'rgba(240,244,255,0.25)', minWidth: '28px', textAlign: 'right' }}>{s.count}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={card}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>AI Insight Summary</div>
-                {[{ icon: '📈', title: 'Resignation queries up 140% this month', desc: 'Spike started Feb 10. Possible response to rumored restructuring – recommend leadership transparency.', color: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' }, { icon: '✈️', title: 'Travel reimbursement is the #1 confusion point', desc: 'Section 7.1 has unclear international limits. AI recommends rewriting with explicit cap tables.', color: 'rgba(79,142,247,0.08)', border: 'rgba(79,142,247,0.2)' }, { icon: '🏠', title: 'Remote work queries increasing post-RTO', desc: '24 questions since Feb 1 – employees seeking clarity on hybrid exceptions.', color: 'rgba(79,142,247,0.08)', border: 'rgba(79,142,247,0.2)' }].map(a => (
-                  <div key={a.title} style={{ padding: '12px 14px', borderRadius: '10px', background: a.color, border: `1px solid ${a.border}`, marginBottom: '10px', display: 'flex', gap: '10px' }}>
-                    <div style={{ fontSize: '16px' }}>{a.icon}</div>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#f0f4ff', marginBottom: '3px' }}>{a.title}</div>
-                      <div style={{ fontSize: '12px', color: 'rgba(240,244,255,0.45)' }}>{a.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
+        
         {page === 'invite' && (
           <div>
             <div style={{ marginBottom: '32px' }}>
