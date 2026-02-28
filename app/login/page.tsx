@@ -82,6 +82,7 @@ const LOGIN_STYLE = `
       inset 0 1px 0 rgba(255,255,255,0.7);
     position: relative;
     z-index: 1;
+    animation: fadeInUp 0.5s ease-out;
   }
 
   .login-card::before {
@@ -231,27 +232,46 @@ const LOGIN_STYLE = `
     gap: 10px;
   }
 
-  .login-divider {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin: 28px 0 24px;
+  .success-box {
+    padding: 22px 24px;
+    border-radius: 18px;
+    background: rgba(122,158,126,0.08);
+    border: 1px solid rgba(122,158,126,0.25);
+    color: #3a6b40;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 14px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    text-align: center;
+    line-height: 1.7;
+    animation: fadeInUp 0.4s ease-out;
   }
 
-  .login-divider::before,
-  .login-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: rgba(122,100,70,0.12);
-  }
-
-  .login-divider span {
-    font-size: 11px;
-    color: rgba(122,100,70,0.4);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+  .success-box strong {
+    display: block;
+    font-size: 17px;
+    margin-bottom: 8px;
+    color: #2d5a33;
     font-weight: 600;
+  }
+
+  .toggle-link {
+    background: none;
+    border: none;
+    color: rgba(122,100,70,0.5);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 0;
+    transition: color 0.15s ease;
+  }
+
+  .toggle-link:hover {
+    color: rgba(90,75,55,0.8);
   }
 
   @keyframes fadeInUp {
@@ -259,7 +279,14 @@ const LOGIN_STYLE = `
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .login-card { animation: fadeInUp 0.5s ease-out; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .password-field {
+    animation: slideDown 0.2s ease-out;
+  }
 `
 
 export default function LoginPage() {
@@ -267,10 +294,31 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [usePassword, setUsePassword] = useState(false)
+  const [magicLinkSent, setMagicLinkSent] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  async function handleLogin() {
+  async function handleMagicLink() {
+    if (!email) { setError('Enter your email first'); return }
+    setLoading(true)
+    setError('')
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
+    })
+    if (error) {
+      setError(error.message)
+    } else {
+      setMagicLinkSent(true)
+    }
+    setLoading(false)
+  }
+
+  async function handlePasswordLogin() {
+    if (!email || !password) { setError('Enter your email and password'); return }
     setLoading(true)
     setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -280,6 +328,12 @@ export default function LoginPage() {
     } else {
       router.push('/dashboard')
     }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== 'Enter') return
+    if (usePassword) handlePasswordLogin()
+    else handleMagicLink()
   }
 
   return (
@@ -303,38 +357,68 @@ export default function LoginPage() {
             Sign in to your compliance dashboard
           </p>
 
-          <input
-            className="login-input"
-            type="email"
-            placeholder="Email address"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-          />
-          <input
-            className="login-input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={{ marginBottom: '8px' }}
-          />
-
-          {error && (
-            <div className="error-box">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="15" y1="9" x2="9" y2="15" />
-                <line x1="9" y1="9" x2="15" y2="15" />
-              </svg>
-              {error}
+          {magicLinkSent ? (
+            <div className="success-box">
+              <strong>Check your inbox</strong>
+              We sent a login link to <span style={{ fontWeight: 600 }}>{email}</span>.<br />
+              Tap it and you're in – no password needed.
             </div>
-          )}
+          ) : (
+            <>
+              <input
+                className="login-input"
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
 
-          <button className="login-btn" onClick={handleLogin} disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
+              {usePassword && (
+                <div className="password-field">
+                  <input
+                    className="login-input"
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    style={{ marginBottom: '8px' }}
+                  />
+                </div>
+              )}
+
+              {error && (
+                <div className="error-box">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="15" y1="9" x2="9" y2="15" />
+                    <line x1="9" y1="9" x2="15" y2="15" />
+                  </svg>
+                  {error}
+                </div>
+              )}
+
+              <button
+                className="login-btn"
+                onClick={usePassword ? handlePasswordLogin : handleMagicLink}
+                disabled={loading}
+              >
+                {loading
+                  ? (usePassword ? 'Signing in...' : 'Sending link...')
+                  : (usePassword ? 'Sign In' : 'Send Magic Link')}
+              </button>
+
+              <p style={{ textAlign: 'center', marginTop: '20px' }}>
+                <button
+                  className="toggle-link"
+                  onClick={() => { setUsePassword(v => !v); setError('') }}
+                >
+                  {usePassword ? 'Send a magic link instead' : 'Use password instead'}
+                </button>
+              </p>
+            </>
+          )}
 
           <p style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(122,100,70,0.4)', marginTop: '32px', letterSpacing: '0.2px' }}>
             Secure compliance platform
