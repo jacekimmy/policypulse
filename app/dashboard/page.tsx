@@ -519,7 +519,7 @@ function AdminDashboard() {
               ))}
             </div>
             <div style={card}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>At-Risk Employees</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>Individual Check-In Scores</div>
                 {!adminStats || adminStats.atRisk.length === 0 ? (
                   <div style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px' }}>No at-risk employees.</div>
                 ) : (
