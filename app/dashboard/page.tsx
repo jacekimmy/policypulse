@@ -824,7 +824,7 @@ function MobileBottomNav({ items, page, setPage, onMorePress }: {
               {item.icon}
             </div>
             <span className="mobile-nav-label">{item.label}</span>
-            {item.badge && item.badge > 0 && (
+            {(item.badge ?? -1) > 0 && (
               <span className="mobile-nav-badge">{item.badge}</span>
             )}
           </button>
@@ -867,7 +867,7 @@ function MoreSheet({ items, page, setPage, onClose }: {
           >
             {item.icon}
             <span>{item.label}</span>
-            {item.badge && item.badge > 0 && (
+            {(item.badge ?? -1) > 0 && (
               <span style={{ marginLeft: 'auto', background: '#b85c52', color: '#fff', borderRadius: '100px', fontSize: '10px', fontWeight: 700, padding: '2px 7px' }}>
                 {item.badge}
               </span>
@@ -910,7 +910,7 @@ function Sidebar({ role, page, setPage, navItems, badge }: {
         <div key={item.key} className={`glass-nav-item ${page === item.key ? 'glass-nav-active' : ''}`} onClick={() => setPage(item.key)}>
           {item.icon}
           <span>{item.label}</span>
-          {item.badge && item.badge > 0 && (
+          {(item.badge ?? -1) > 0 && (
             <span style={{ marginLeft: 'auto', background: role === 'manager' ? '#b85c52' : '#2c5a30', color: '#fff', borderRadius: '100px', fontSize: '10px', fontWeight: 700, padding: '2px 7px', minWidth: '18px', textAlign: 'center' }}>
               {item.badge}
             </span>
