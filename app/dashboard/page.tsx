@@ -506,11 +506,10 @@ function AdminDashboard() {
               <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.6px' }}>Compliance Dashboard</h1>
               <p style={{ color: 'rgba(240,244,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Birds-eye view – SEC/FINRA audit readiness</p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '16px', marginBottom: '24px' }}>
               {[
                 { label: 'Overall Completion', val: adminStats ? `${adminStats.completion}%` : '--', sub: 'avg quiz score', color: '#34d399' },
                 { label: 'At Risk', val: adminStats ? `${adminStats.atRiskCount}` : '--', sub: 'employees below 60%', color: '#f87171' },
-                { label: 'Modules Deployed', val: '9', sub: 'across 3 departments', color: '#4f8ef7' },
               ].map(s => (
                 <div key={s.label} style={card}>
                   <div style={{ fontSize: '11px', color: 'rgba(240,244,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>{s.label}</div>
