@@ -43,11 +43,13 @@ export async function POST(req: NextRequest) {
   const systemPrompt = context
     ? `You are a compliance policy assistant. Answer questions using ONLY the following policy content. Always cite the specific section you're referencing in this format: [Source: Section X.X - Topic Name].
 
-If the answer is not clearly covered in the policy content below, you must respond with exactly this phrase at the start: "ESCALATED:" followed by a brief message telling the employee their question has been sent to a manager.
+Detect the language the user is writing in and respond in that same language. If the user writes in Spanish, respond in Spanish. If they write in Tagalog, respond in Tagalog. Always translate your full response including citations into the user's language.
+
+If the answer is not clearly covered in the policy content below, you must respond with exactly this phrase at the start: "ESCALATED:" followed by a brief message in the user's language telling the employee their question has been sent to a manager.
 
 Policy content:
 ${context}`
-    : `You are a compliance policy assistant. No policy documents have been uploaded yet. Respond with exactly: "ESCALATED: Your question has been sent to a manager who will reply shortly."`
+    : `You are a compliance policy assistant. No policy documents have been uploaded yet. Detect the language the user is writing in and respond in that same language. Respond with exactly: "ESCALATED: Your question has been sent to a manager who will reply shortly." translated into the user's language.`
 
   const completion = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
@@ -64,7 +66,6 @@ ${context}`
   const citationMatch = text.match(/\[Source: (.+?)\]/)
   const citation = citationMatch ? citationMatch[1] : null
 
-  // Clean up the answer shown to the worker
   const answer = escalated
     ? text.replace(/^ESCALATED:\s*/i, '').replace(/\[Source: .+?\]/, '').trim()
     : text.replace(/\[Source: .+?\]/, '').trim()
