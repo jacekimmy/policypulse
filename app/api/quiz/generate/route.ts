@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import Groq from 'groq-sdk'
 
 const supabase = createClient(
@@ -13,24 +13,26 @@ function todayString() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url)
+    const organization_id = searchParams.get('organization_id') || 'default'
     const today = todayString()
 
-    // Check if today's questions already exist
     const { data: existing } = await supabase
       .from('quiz_questions')
       .select('*')
       .eq('quiz_date', today)
+      .eq('organization_id', organization_id)
 
     if (existing && existing.length >= 3) {
       return NextResponse.json({ questions: existing })
     }
 
-    // Pull document chunks for context
     const { data: chunks } = await supabase
       .from('document_chunks')
       .select('content')
+      .eq('organization_id', organization_id)
       .limit(20)
 
     const context = (chunks ?? []).map(c => c.content).join('\n\n').slice(0, 6000)
@@ -85,12 +87,16 @@ Return ONLY valid JSON in this exact format, no other text:
       throw new Error('Invalid questions format from AI')
     }
 
-    // Delete old questions and insert today's
-    await supabase.from('quiz_questions').delete().neq('quiz_date', today)
+    await supabase
+      .from('quiz_questions')
+      .delete()
+      .eq('quiz_date', today)
+      .neq('organization_id', organization_id)
 
     const toInsert = questions.slice(0, 3).map((q: any) => ({
       ...q,
       quiz_date: today,
+      organization_id,
     }))
 
     const { data: inserted, error } = await supabase

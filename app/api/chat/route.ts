@@ -8,10 +8,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-async function findRelevantChunks(question: string): Promise<string> {
+async function findRelevantChunks(question: string, organization_id: string): Promise<string> {
   const { data } = await supabase
     .from('document_chunks')
     .select('content')
+    .eq('organization_id', organization_id)
 
   if (!data || data.length === 0) return ''
 
@@ -36,9 +37,9 @@ async function findRelevantChunks(question: string): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
-  const { question, user_id } = await req.json()
+  const { question, user_id, organization_id = 'default' } = await req.json()
 
-  const context = await findRelevantChunks(question)
+  const context = await findRelevantChunks(question, organization_id)
 
   const systemPrompt = context
     ? `You are a compliance policy assistant. Answer questions using ONLY the following policy content. Always cite the specific section you're referencing in this format: [Source: Section X.X - Topic Name].

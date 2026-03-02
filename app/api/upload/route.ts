@@ -39,6 +39,8 @@ async function parsePDF(buffer: Buffer): Promise<string> {
 export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const file = formData.get('file') as File
+  const organization_id = (formData.get('organization_id') as string) || 'default'
+
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
   const buffer = Buffer.from(await file.arrayBuffer())
@@ -52,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const { data: doc, error: docError } = await supabase
     .from('documents')
-    .insert({ name: file.name, content: text })
+    .insert({ name: file.name, content: text, organization_id })
     .select()
     .single()
 
@@ -62,7 +64,8 @@ export async function POST(req: NextRequest) {
   const chunkRows = chunks.map((content, i) => ({
     document_id: doc.id,
     chunk_index: i,
-    content
+    content,
+    organization_id
   }))
 
   const { error: chunkError } = await supabase
