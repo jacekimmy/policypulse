@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 
 const ORG_ID = "demo";
 
-// ── SVG ICONS ──────────────────────────────────────────
 function IconLayers({ size = 20, color = "currentColor" }: { size?: number; color?: string }) {
   return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>);
 }
@@ -43,7 +42,6 @@ const SUGGESTED_QUESTIONS = [
   { text: "¿Cuáles son las normas de control de infecciones?", lang: "es" },
 ];
 
-// ── MAIN COMPONENT ──────────────────────────────────────
 export default function PolicyPulseDemo() {
   const [page, setPage] = useState("chat");
 
@@ -252,7 +250,6 @@ export default function PolicyPulseDemo() {
           {page === "quiz" && <QuizDemo />}
         </main>
 
-        {/* CTA Banner */}
         <div style={{
           position: "fixed", bottom: 0, left: 0, right: 0,
           padding: "14px 32px",
@@ -277,7 +274,7 @@ export default function PolicyPulseDemo() {
               boxShadow: "0 4px 14px rgba(122,158,126,0.3), inset 0 1px 0 rgba(255,255,255,0.3)",
             }}
           >
-            <IconMail size={13} /> Reply to Thomas's email
+            <IconMail size={13} /> Reply to Jace's email
           </a>
         </div>
       </div>
@@ -415,27 +412,20 @@ const OPTIONS = ["a", "b", "c", "d"] as const;
 
 function QuizDemo() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [started, setStarted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [quizIndex, setQuizIndex] = useState(0);
   const [answers, setAnswers] = useState<{ correct: boolean; selected: number }[]>([]);
   const [done, setDone] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
 
-  async function startQuiz() {
-    setLoading(true);
-    setStarted(true);
-    try {
-      const res = await fetch(`/api/quiz/generate?organization_id=${ORG_ID}`);
-      const data = await res.json();
-      setQuestions(data.questions ?? []);
-    } catch {
-      setQuestions([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    fetch(`/api/quiz/generate?organization_id=${ORG_ID}`)
+      .then(r => r.json())
+      .then(data => setQuestions(data.questions ?? []))
+      .catch(() => setQuestions([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const current = questions[quizIndex];
   const totalCorrect = answers.filter(a => a.correct).length;
@@ -466,7 +456,26 @@ function QuizDemo() {
 
   function restart() {
     setQuizIndex(0); setAnswers([]); setDone(false);
-    setSelected(null); setShowResult(false); setStarted(false); setQuestions([]);
+    setSelected(null); setShowResult(false); setLoading(true);
+    fetch(`/api/quiz/generate?organization_id=${ORG_ID}`)
+      .then(r => r.json())
+      .then(data => setQuestions(data.questions ?? []))
+      .catch(() => setQuestions([]))
+      .finally(() => setLoading(false));
+  }
+
+  if (loading) {
+    return (
+      <div className="fade-in">
+        <div style={{ marginBottom: "28px" }}>
+          <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "28px", color: "#2c2415", letterSpacing: "-0.5px", marginBottom: "6px" }}>Daily Compliance Quiz</h1>
+          <p style={{ color: "#8a7a65", fontSize: "13px" }}>3 questions generated live from MA home care regulations.</p>
+        </div>
+        <div className="glass-card" style={{ padding: "60px", textAlign: "center", color: "#8a7a65", fontSize: "14px" }}>
+          Generating questions from MA regulations...
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -476,29 +485,14 @@ function QuizDemo() {
           <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "28px", color: "#2c2415", letterSpacing: "-0.5px", marginBottom: "6px" }}>Daily Compliance Quiz</h1>
           <p style={{ color: "#8a7a65", fontSize: "13px" }}>3 questions generated live from MA home care regulations. Every answer is logged with a timestamp.</p>
         </div>
-        {started && !done && questions.length > 0 && (
+        {!done && questions.length > 0 && (
           <span style={{ padding: "6px 16px", borderRadius: "100px", fontSize: "12px", fontWeight: 600, background: "rgba(90,138,94,0.1)", color: "#2c5a30", border: "1px solid rgba(90,138,94,0.25)" }}>
             {quizIndex + 1} / {questions.length}
           </span>
         )}
       </div>
 
-      {!started && (
-        <div className="glass-card" style={{ padding: "60px", textAlign: "center" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>📋</div>
-          <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "22px", color: "#2c2415", marginBottom: "10px" }}>Ready to test your knowledge?</h2>
-          <p style={{ fontSize: "14px", color: "#8a7a65", marginBottom: "28px" }}>3 questions pulled live from Massachusetts home care regulations</p>
-          <button className="glass-btn-primary" onClick={startQuiz} style={{ padding: "14px 32px", fontSize: "15px" }}>Start Quiz</button>
-        </div>
-      )}
-
-      {started && loading && (
-        <div className="glass-card" style={{ padding: "60px", textAlign: "center", color: "#8a7a65", fontSize: "14px" }}>
-          Generating questions from MA regulations...
-        </div>
-      )}
-
-      {started && !loading && !done && current && (
+      {!done && current && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "24px", alignItems: "start" }}>
           <div className="glass-card" style={{ padding: "32px" }}>
             <div style={{ height: "4px", borderRadius: "99px", background: "rgba(122,100,70,0.08)", marginBottom: "24px" }}>
