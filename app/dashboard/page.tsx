@@ -979,15 +979,15 @@ function WorkerDashboard() {
     loadUser()
   }, [])
 
-  useEffect(() => {
-    async function loadQuestions() {
-      const res = await fetch('/api/questions')
-      const data = await res.json()
-      setQuestions(data.questions ?? [])
-      setQuizLoading(false)
-    }
-    loadQuestions()
-  }, [])
+useEffect(() => {
+  async function loadQuestions() {
+    const res = await fetch('/api/quiz/generate?organization_id=default')
+    const data = await res.json()
+    setQuestions(data.questions ?? [])
+    setQuizLoading(false)
+  }
+  loadQuestions()
+}, [])
 
   async function sendChat() {
     if (!input.trim()) return
