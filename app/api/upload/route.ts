@@ -27,7 +27,13 @@ async function parsePDF(buffer: Buffer): Promise<string> {
     const parser = new PDFParser()
     parser.on('pdfParser_dataReady', (data: any) => {
       const text = data.Pages.map((page: any) =>
-        page.Texts.map((t: any) => decodeURIComponent(t.R.map((r: any) => r.T).join(''))).join(' ')
+        page.Texts.map((t: any) => {
+          try {
+            return decodeURIComponent(t.R.map((r: any) => r.T).join(''))
+          } catch {
+            return t.R.map((r: any) => r.T).join('')
+          }
+        }).join(' ')
       ).join('\n')
       resolve(text)
     })
