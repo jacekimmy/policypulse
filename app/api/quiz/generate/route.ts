@@ -13,10 +13,25 @@ function todayString() {
   return new Date().toISOString().slice(0, 10)
 }
 
+async function getOrgId(user_id: string | null, fallback: string): Promise<string> {
+  if (!user_id) return fallback
+  const { data } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', user_id)
+    .single()
+  return data?.organization_id ?? fallback
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const organization_id = searchParams.get('organization_id') || 'default'
+    const user_id = searchParams.get('user_id')
+    const fallback_org = searchParams.get('organization_id') || 'default'
+
+    // Resolve org from profile if user_id provided, otherwise use fallback
+    const organization_id = await getOrgId(user_id, fallback_org)
+
     const today = todayString()
 
     const { data: existing } = await supabase
@@ -91,7 +106,7 @@ Return ONLY valid JSON in this exact format, no other text:
       .from('quiz_questions')
       .delete()
       .eq('quiz_date', today)
-      .neq('organization_id', organization_id)
+      .eq('organization_id', organization_id)
 
     const toInsert = questions.slice(0, 3).map((q: any) => ({
       ...q,

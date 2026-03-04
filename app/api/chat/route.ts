@@ -8,6 +8,16 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+async function getOrgId(user_id: string | null, fallback: string): Promise<string> {
+  if (!user_id) return fallback
+  const { data } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', user_id)
+    .single()
+  return data?.organization_id ?? fallback
+}
+
 async function findRelevantChunks(question: string, organization_id: string): Promise<string> {
   const { data } = await supabase
     .from('document_chunks')
@@ -37,7 +47,10 @@ async function findRelevantChunks(question: string, organization_id: string): Pr
 }
 
 export async function POST(req: NextRequest) {
-  const { question, user_id, organization_id = 'default' } = await req.json()
+  const { question, user_id, organization_id: fallback_org = 'default' } = await req.json()
+
+  // Always resolve org from profile if user is logged in
+  const organization_id = await getOrgId(user_id, fallback_org)
 
   const context = await findRelevantChunks(question, organization_id)
 
