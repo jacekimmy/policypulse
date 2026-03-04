@@ -792,7 +792,7 @@ function MobileTopBar({ title }: { title: string }) {
         <div style={{ width: '30px', height: '30px', borderRadius: '9px', background: 'linear-gradient(135deg, rgba(122,158,126,0.85) 0%, rgba(95,135,100,0.95) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(122,158,126,0.25)' }}>
           <IconLayers size={15} color="#fff" />
         </div>
-        <span className="serif-heading" style={{ fontSize: '17px', color: '#2c2415', letterSpacing: '-0.2px' }}>PolicyPulse</span>
+        <span className="serif-heading" style={{ fontSize: '17px', color: '#2c2415', letterSpacing: '-0.2px' }}>Handrail</span>
       </div>
       <span style={{ fontSize: '13px', color: '#8a7a65', fontWeight: 500 }}>{title}</span>
     </div>
