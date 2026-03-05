@@ -80,7 +80,7 @@ const SUGGESTED_QUESTIONS = [
 
 const OPTIONS = ["A", "B", "C", "D"] as const;
 
-export default function PolicyPulseDemo() {
+export default function HandrailDemo() {
   const [page, setPage] = useState("chat");
 
   return (
@@ -182,7 +182,7 @@ export default function PolicyPulseDemo() {
               <IconLayers size={17} color="#fff" />
             </div>
             <div>
-              <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: "18px", color: "#2c2415", letterSpacing: "-0.3px" }}>PolicyPulse</span>
+              <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: "18px", color: "#2c2415", letterSpacing: "-0.3px" }}>Handrail</span>
               <span style={{ fontSize: "11px", color: "#b0a08c", marginLeft: "10px", fontWeight: 500 }}>Demo</span>
             </div>
           </div>
@@ -202,7 +202,7 @@ export default function PolicyPulseDemo() {
 
         <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "14px 32px", background: "rgba(244,240,234,0.9)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderTop: "1px solid rgba(122,100,70,0.08)", display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", zIndex: 20 }}>
           <span style={{ fontSize: "13px", color: "#5a5040", fontWeight: 500 }}>This demo uses general MA regulations. Want to see it loaded with your agency's handbook?</span>
-          <a href="mailto:YOUR_EMAIL@gmail.com?subject=Interested in PolicyPulse for my agency" style={{ padding: "8px 20px", borderRadius: "10px", background: "linear-gradient(135deg, rgba(122,158,126,0.88) 0%, rgba(95,135,100,0.95) 100%)", color: "#fff", fontSize: "12px", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "6px", boxShadow: "0 4px 14px rgba(122,158,126,0.3), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+          <a href="mailto:YOUR_EMAIL@gmail.com?subject=Interested in Handrail for my agency" style={{ padding: "8px 20px", borderRadius: "10px", background: "linear-gradient(135deg, rgba(122,158,126,0.88) 0%, rgba(95,135,100,0.95) 100%)", color: "#fff", fontSize: "12px", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "6px", boxShadow: "0 4px 14px rgba(122,158,126,0.3), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
             <IconMail size={13} /> Reply to Thomas's email
           </a>
         </div>

@@ -1,20 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import Groq from 'groq-sdk'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const STOP_WORDS = new Set([
-  'the','a','an','is','it','in','on','at','to','for','of','and','or','but',
-  'what','how','can','do','does','i','my','we','our','you','your','me','us',
-  'this','that','with','have','has','are','was','were','be','been','will',
-  'would','could','should','if','when','where','who','which','about','from',
-  'not','no','any','all','some','they','their','there','than','then','just',
-  'its','his','her','him','she','he','get','got','need','want','know','tell',
-  'please','help','explain','policy','employee','company','handbook'
-])
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! })
 
 export async function GET() {
   try {
@@ -28,24 +21,30 @@ export async function GET() {
 
     if (error) throw error
 
-    const freq: Record<string, number> = {}
+    const questions = (data ?? []).map(r => r.question).filter(Boolean)
+    if (questions.length === 0) return NextResponse.json({ topics: [] })
 
-    for (const row of data ?? []) {
-      const words = (row.question ?? '')
-        .toLowerCase()
-        .replace(/[^a-z\s]/g, '')
-        .split(/\s+/)
-        .filter((w: string) => w.length > 3 && !STOP_WORDS.has(w))
+    const prompt = `You are analyzing staff questions from a home health agency compliance system.
 
-      for (const word of words) {
-        freq[word] = (freq[word] ?? 0) + 1
-      }
-    }
+Here are the questions asked in the last 30 days:
+${questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 
-    const topics = Object.entries(freq)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([term, count]) => ({ term, count }))
+Extract the top 8 compliance topics being asked about. Each topic should be a short 2-4 word phrase in English (e.g. "Infection Control", "Elder Abuse Reporting", "Medication Handling").
+
+Respond ONLY with a JSON array like this, no other text:
+[{"term": "Infection Control", "count": 5}, {"term": "Elder Abuse", "count": 3}]
+
+Count how many questions relate to each topic. Sort by count descending.`
+
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
+    })
+
+    const raw = completion.choices[0]?.message?.content ?? '[]'
+    const clean = raw.replace(/```json|```/g, '').trim()
+    const topics = JSON.parse(clean)
 
     return NextResponse.json({ topics })
   } catch (e: any) {

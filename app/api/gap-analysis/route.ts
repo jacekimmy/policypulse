@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     // Send email
     await resend.emails.send({
-      from: 'PolicyPulse <noreply@policypulse.app>',
+      from: 'Handrail <noreply@policypulse.app>',
       to: profile.email,
       subject: 'Your question has been answered',
       html: `
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
             <p style="color: #666; font-size: 13px; margin: 0 0 8px;">Answer from ${manager_name ?? 'your manager'}:</p>
             <p style="color: #1a1a2e;">${reply}</p>
           </div>
-          <p style="color: #999; font-size: 12px; margin-top: 24px;">PolicyPulse Compliance Platform</p>
+          <p style="color: #999; font-size: 12px; margin-top: 24px;">Handrail Compliance Platform</p>
         </div>
       `
     })

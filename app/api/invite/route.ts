@@ -27,12 +27,12 @@ export async function POST(req: NextRequest) {
 
   // Send welcome email via Resend
   await resend.emails.send({
-    from: 'PolicyPulse <onboarding@resend.dev>',
+    from: 'Handrail <onboarding@resend.dev>',
     to: email,
-    subject: 'You have been invited to PolicyPulse',
+    subject: 'You have been invited to Handrail',
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2>Welcome to PolicyPulse</h2>
+        <h2>Welcome to Handrail</h2>
         <p>You have been invited to join your firm's compliance training platform.</p>
         <p>Check your inbox for a separate email from Supabase with your login link. Click it to set your password and access your dashboard.</p>
         <p>Your role: <strong>${role}</strong></p>
