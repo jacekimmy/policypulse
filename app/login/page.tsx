@@ -351,7 +351,7 @@ export default function LoginPage() {
           </div>
 
           <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: '30px', fontWeight: 400, color: '#2c2415', letterSpacing: '-0.3px', marginBottom: '6px' }}>
-            PolicyPulse
+            Handrail
           </h1>
           <p style={{ color: '#8a7a65', fontSize: '14px', marginBottom: '36px', lineHeight: 1.5 }}>
             Sign in to your compliance dashboard
