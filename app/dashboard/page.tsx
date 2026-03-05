@@ -899,7 +899,7 @@ function Sidebar({ role, page, setPage, navItems, badge }: {
         <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(122,158,126,0.85) 0%, rgba(95,135,100,0.95) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(122,158,126,0.25), inset 0 1px 0 rgba(255,255,255,0.35)', flexShrink: 0 }}>
           <IconLayers size={18} color="#fff" />
         </div>
-        <span className="serif-heading" style={{ fontSize: '20px', color: '#2c2415', letterSpacing: '-0.3px' }}>PolicyPulse</span>
+        <span className="serif-heading" style={{ fontSize: '20px', color: '#2c2415', letterSpacing: '-0.3px' }}>Handrail</span>
       </div>
 
       <div style={{ fontSize: '10px', color: '#b0a08c', textTransform: 'uppercase', letterSpacing: '1.6px', padding: '4px 14px 10px', fontWeight: 700 }}>
