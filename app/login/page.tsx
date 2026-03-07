@@ -308,6 +308,11 @@ useEffect(() => {
   }
 }, [])
   
+useEffect(() => {
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) router.push('/dashboard')
+  })
+}, [])
 
 async function handleMagicLink() {
   if (!email) { setError('Enter your email first'); return }
