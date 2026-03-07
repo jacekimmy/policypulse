@@ -300,22 +300,22 @@ export default function LoginPage() {
   const supabase = createClient()
 
   async function handleMagicLink() {
-    if (!email) { setError('Enter your email first'); return }
-    setLoading(true)
-    setError('')
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-      },
-    })
-    if (error) {
-      setError(error.message)
-    } else {
-      setMagicLinkSent(true)
-    }
-    setLoading(false)
+  if (!email) { setError('Enter your email first'); return }
+  setLoading(true)
+  setError('')
+  const res = await fetch('/api/magic-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, redirectTo: `${window.location.origin}/dashboard` })
+  })
+  const data = await res.json()
+  if (data.error) {
+    setError(data.error)
+  } else {
+    setMagicLinkSent(true)
   }
+  setLoading(false)
+}
 
   async function handlePasswordLogin() {
     if (!email || !password) { setError('Enter your email and password'); return }
