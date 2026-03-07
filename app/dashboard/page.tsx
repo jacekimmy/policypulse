@@ -754,6 +754,11 @@ export default function Dashboard() {
   const [role, setRole] = useState<string | null>(null)
   const supabase = createClient()
   const router = useRouter()
+  useEffect(() => {
+  supabase.auth.getUser().then(({ data: { user }, error }) => {
+    if (error || !user) router.push('/login')
+  })
+}, [])
 
   useEffect(() => {
     async function getRole() {
