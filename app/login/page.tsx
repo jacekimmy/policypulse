@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -298,6 +298,16 @@ export default function LoginPage() {
   const [magicLinkSent, setMagicLinkSent] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+useEffect(() => {
+  const hash = window.location.hash
+  if (hash && hash.includes('access_token')) {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.push('/dashboard')
+    })
+  }
+}, [])
+  
 
   async function handleMagicLink() {
   if (!email) { setError('Enter your email first'); return }
