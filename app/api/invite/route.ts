@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   // Send welcome email via Resend
   await resend.emails.send({
-    from: 'Handrail <onboarding@resend.dev>',
+    from: 'Handrail <hello@handrail.one>',
     to: email,
     subject: 'You have been invited to Handrail',
     html: `
