@@ -309,18 +309,18 @@ useEffect(() => {
 }, [])
   
 
-  async function handleMagicLink() {
+async function handleMagicLink() {
   if (!email) { setError('Enter your email first'); return }
   setLoading(true)
   setError('')
-  const res = await fetch('/api/magic-link', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, redirectTo: `${window.location.origin}/dashboard` })
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
+    },
   })
-  const data = await res.json()
-  if (data.error) {
-    setError(data.error)
+  if (error) {
+    setError(error.message)
   } else {
     setMagicLinkSent(true)
   }
