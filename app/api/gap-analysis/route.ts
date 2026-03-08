@@ -58,18 +58,27 @@ export async function GET() {
   // Score each topic by question frequency vs doc coverage
   const gaps = topics.map(topic => {
     const topicWords = topic.toLowerCase().split(' ').filter(w => w.length > 2)
-const count = chats.filter(c => {
-  const q = c.question.toLowerCase()
-  return topicWords.some(word => q.includes(word))
-}).length
+    const count = chats.filter(c => {
+      const q = c.question.toLowerCase()
+      return topicWords.some(word => q.includes(word))
+    }).length
     const docMentions = topicWords.reduce((acc, word) => {
-  return acc + (docText.match(new RegExp(word, 'g')) ?? []).length
-}, 0)
-    const gapScore = count - (docMentions * 0.1)
-    return { term: topic, count, docMentions, gapScore }
+      return acc + (docText.match(new RegExp(word, 'g')) ?? []).length
+    }, 0)
+
+    let label = null
+    if (count >= 1 && docMentions <= 2) label = 'High Gap'
+    else if (count >= 1 && docMentions <= 9) label = 'Gap'
+    else if (count === 0 && docMentions <= 2) label = 'Low Gap'
+    else label = null
+
+    return { term: topic, count, docMentions, label }
   })
-  .filter(g => g.docMentions < 10)
-  .sort((a, b) => b.gapScore - a.gapScore)
+  .filter(g => g.label !== null)
+  .sort((a, b) => {
+    const order: Record<string, number> = { 'High Gap': 0, 'Gap': 1, 'Low Gap': 2 }
+    return order[a.label!] - order[b.label!]
+  })
 
   return NextResponse.json({ gaps })
 }

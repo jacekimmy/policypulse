@@ -1608,9 +1608,9 @@ function AdminDashboard() {
                         Asked {g.count}× · {g.docMentions} mention{g.docMentions !== 1 ? 's' : ''} in docs
                       </div>
                     </div>
-                    <span className={`badge ${i === 0 ? 'badge-red' : 'badge-amber'}`}>
-                      {i === 0 ? 'High Gap' : 'Gap'}
-                    </span>
+                    <span className={`badge ${ (g as any).label === 'High Gap' ? 'badge-red' : (g as any).label === 'Gap' ? 'badge-amber' : 'badge-blue'}`}>
+  {(g as any).label}
+</span>
                   </div>
                 ))}
               </div>
