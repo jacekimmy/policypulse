@@ -302,8 +302,21 @@ export default function LoginPage() {
 useEffect(() => {
   const hash = window.location.hash
   if (hash && hash.includes('access_token')) {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.push('/dashboard')
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        const metadata = user.user_metadata
+        await fetch('/api/auth/set-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: user.id,
+            email: user.email,
+            role: metadata.role ?? 'worker',
+            organization_id: metadata.organization_id ?? null,
+          })
+        })
+        router.push('/dashboard')
+      }
     })
   }
 }, [])
