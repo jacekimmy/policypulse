@@ -10,6 +10,7 @@ export async function GET() {
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, email, full_name')
+    .eq('role', 'worker')
 
   const { data: quizzes } = await supabase
     .from('quiz_results')

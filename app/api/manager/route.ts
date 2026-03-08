@@ -15,7 +15,7 @@ export async function GET() {
 
   // Get today's quiz results
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
+today.setUTCHours(0, 0, 0, 0)
 
   const { data: results } = await supabase
     .from('quiz_results')
