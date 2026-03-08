@@ -11,6 +11,7 @@ export async function GET() {
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, email, full_name')
+    .eq('role', 'worker')
 
   // Get today's quiz results
   const today = new Date()
