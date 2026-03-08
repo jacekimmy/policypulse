@@ -31,23 +31,28 @@ export async function POST(req: NextRequest) {
 
   if (inviteError) return NextResponse.json({ error: inviteError.message }, { status: 500 })
 
-  // Send magic link with role + org_id in metadata
-  const { error: authError } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: { role, organization_id }
+  // Generate magic link
+  const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: { data: { role, organization_id } }
   })
 
-  if (authError) return NextResponse.json({ error: authError.message }, { status: 500 })
+  if (linkError || !linkData) return NextResponse.json({ error: linkError?.message }, { status: 500 })
 
+  const magicLink = linkData.properties?.action_link
+
+  // Send single branded email via Resend
   await resend.emails.send({
     from: 'Handrail <hello@handrail.one>',
     to: email,
-    subject: 'You have been invited to Handrail',
+    subject: "You've been invited to Handrail",
     html: `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2>Welcome to Handrail</h2>
-        <p>You have been invited to join your firm's compliance training platform.</p>
-        <p>Check your inbox for a separate email from Supabase with your login link. Click it to access your dashboard.</p>
-        <p>Your role: <strong>${role}</strong></p>
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+        <h2 style="margin-bottom: 8px;">Welcome to Handrail</h2>
+        <p style="color: #6a5a45; margin-bottom: 24px;">You've been invited to join your agency's compliance training platform.</p>
+        <a href="${magicLink}" style="display: inline-block; background: #5f8764; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px;">Access Your Dashboard</a>
+        <p style="color: #b0a08c; font-size: 12px; margin-top: 24px;">Your role: ${role}. This link expires in 24 hours.</p>
       </div>
     `
   })
