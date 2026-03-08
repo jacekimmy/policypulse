@@ -1,72 +1,70 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { NextResponse } from 'next/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const resend = new Resend(process.env.RESEND_API_KEY!)
+export async function GET() {
+  // Get all chat questions from the last 30 days
+  const since = new Date()
+  since.setDate(since.getDate() - 30)
 
-export async function POST(req: NextRequest) {
-  try {
-    const { escalation_id, reply, manager_name } = await req.json()
-    if (!escalation_id || !reply) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-    }
+  const { data: chats } = await supabase
+    .from('chat_logs')
+    .select('question')
+    .gte('created_at', since.toISOString())
 
-    // Get the escalation + original question + user email
-    const { data: esc, error: escErr } = await supabase
-      .from('chat_logs')
-      .select('id, question, user_id')
-      .eq('id', escalation_id)
-      .single()
-
-    if (escErr || !esc) {
-      return NextResponse.json({ error: 'Escalation not found' }, { status: 404 })
-    }
-
-    // Get employee email
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('email, full_name')
-      .eq('id', esc.user_id)
-      .single()
-
-    if (!profile?.email) {
-      return NextResponse.json({ error: 'Employee email not found' }, { status: 404 })
-    }
-
-    // Send email
-    await resend.emails.send({
-      from: 'Handrail <noreply@policypulse.app>',
-      to: profile.email,
-      subject: 'Your question has been answered',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #f9f9f9;">
-          <h2 style="color: #1a1a2e;">Your question has been answered</h2>
-          <div style="background: #fff; border-radius: 8px; padding: 20px; margin: 16px 0; border-left: 4px solid #4f8ef7;">
-            <p style="color: #666; font-size: 13px; margin: 0 0 8px;">Your question:</p>
-            <p style="color: #1a1a2e; font-style: italic;">"${esc.question}"</p>
-          </div>
-          <div style="background: #fff; border-radius: 8px; padding: 20px; margin: 16px 0; border-left: 4px solid #34d399;">
-            <p style="color: #666; font-size: 13px; margin: 0 0 8px;">Answer from ${manager_name ?? 'your manager'}:</p>
-            <p style="color: #1a1a2e;">${reply}</p>
-          </div>
-          <p style="color: #999; font-size: 12px; margin-top: 24px;">Handrail Compliance Platform</p>
-        </div>
-      `
-    })
-
-    // Mark escalation resolved and save reply
-    await supabase
-      .from('chat_logs')
-      .update({ resolved: true, manager_reply: reply })
-      .eq('id', escalation_id)
-
-    return NextResponse.json({ success: true })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  if (!chats || chats.length === 0) {
+    return NextResponse.json({ gaps: [] })
   }
+
+  // Get all doc chunks to cross-reference
+  const { data: chunks } = await supabase
+    .from('document_chunks')
+    .select('content')
+
+  const docText = chunks?.map(c => c.content).join(' ').toLowerCase() ?? ''
+
+  // Use AI to extract topics from questions
+  const questions = chats.map(c => c.question).join('\n')
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{
+        role: 'user',
+        content: `Extract the top 8 compliance topics from these employee questions. Return ONLY a JSON array of strings, no other text:\n\n${questions}`
+      }],
+      max_tokens: 200
+    })
+  })
+
+  const aiData = await res.json()
+  let topics: string[] = []
+  try {
+    const raw = aiData.choices[0].message.content.replace(/```json|```/g, '').trim()
+    topics = JSON.parse(raw)
+  } catch {
+    return NextResponse.json({ gaps: [] })
+  }
+
+  // Score each topic by question frequency vs doc coverage
+  const gaps = topics.map(topic => {
+    const count = chats.filter(c =>
+      c.question.toLowerCase().includes(topic.toLowerCase())
+    ).length
+    const docMentions = (docText.match(new RegExp(topic.toLowerCase(), 'g')) ?? []).length
+    return { term: topic, count, docMentions }
+  })
+  .filter(g => g.count > 0)
+  .sort((a, b) => (b.count - b.docMentions) - (a.count - a.docMentions))
+
+  return NextResponse.json({ gaps })
 }
