@@ -6,6 +6,29 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const REQUIRED_TOPICS = [
+  { term: 'Patient Abuse Prevention and Reporting', regulation: '105 CMR 155' },
+  { term: 'Patient Rights and Bill of Rights', regulation: '42 CFR §484.50' },
+  { term: 'Infection Control and Prevention', regulation: '42 CFR §484.80' },
+  { term: 'Emergency Preparedness Plan', regulation: '42 CFR §484.102' },
+  { term: 'OASIS Assessment and Reporting', regulation: '42 CFR §484.45' },
+  { term: 'Plan of Care Development', regulation: '42 CFR §484.60' },
+  { term: 'Medication Management and Administration', regulation: '42 CFR §484.60' },
+  { term: 'Home Health Aide Supervision', regulation: '42 CFR §484.80' },
+  { term: 'Background Checks and CORI', regulation: '101 CMR 15' },
+  { term: 'Incident and Injury Reporting', regulation: '42 CFR §484.60' },
+  { term: 'Privacy and HIPAA', regulation: '201 CMR 17' },
+  { term: 'Grievance and Complaint Procedure', regulation: '42 CFR §484.50' },
+  { term: 'Staff Training and Competency Evaluation', regulation: '42 CFR §484.80' },
+  { term: 'Transfer and Discharge Policy', regulation: '42 CFR §484.50' },
+  { term: 'Electronic Visit Verification', regulation: 'EVV / MassHealth' },
+  { term: 'DNR and Advance Directives', regulation: '42 CFR §484.50' },
+  { term: 'Mandatory Reporting – Elder Abuse', regulation: '651 CMR 5' },
+  { term: 'Acceptance to Service Policy', regulation: '42 CFR §484.105' },
+  { term: 'Quality Assurance and Performance Improvement', regulation: '42 CFR §484.65' },
+  { term: 'Worker Safety and Injury Prevention', regulation: 'OSHA / MGL c.149' },
+]
+
 export async function GET() {
   const since = new Date()
   since.setDate(since.getDate() - 30)
@@ -15,16 +38,14 @@ export async function GET() {
     .select('question')
     .gte('created_at', since.toISOString())
 
-  if (!chats || chats.length === 0) {
-    return NextResponse.json({ gaps: [] })
-  }
-
   const { data: chunks } = await supabase
     .from('document_chunks')
     .select('content')
 
   const docText = chunks?.map(c => c.content).join(' ') ?? ''
-  const questions = chats.map(c => c.question).join('\n')
+  const questions = chats?.map(c => c.question).join('\n') ?? ''
+
+  if (!docText) return NextResponse.json({ gaps: [] })
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -36,24 +57,25 @@ export async function GET() {
       model: 'llama-3.3-70b-versatile',
       messages: [{
         role: 'user',
-        content: `You are a policy compliance analyst. Analyze these employee questions and this policy document.
+        content: `You are a compliance analyst reviewing a home health agency's policy documents.
 
-For each of the top 8 compliance topics found in the questions, determine:
-1. How many employee questions relate to this topic (count)
-2. How well the policy document covers this topic (docMentions: 0 = not covered, 1-2 = barely covered, 3-9 = lightly covered, 10+ = well covered)
-
-Be semantic - understand meaning, not just keywords. "What's my PTO" and "how many vacation days do I get" are both about the same topic.
+For each required compliance topic below, analyze:
+1. docMentions: How well is this topic covered in the policy document? (0 = not covered at all, 1-2 = barely mentioned, 3-9 = lightly covered, 10+ = well covered). Be strict - a passing mention does not count as coverage.
+2. count: How many of the employee questions relate to this topic? Use semantic understanding, not just keyword matching.
 
 Return ONLY a JSON array, no other text:
-[{"term": "Topic Name", "count": <number>, "docMentions": <number>}]
+[{"term": "exact topic name from list", "count": <number>, "docMentions": <number>}]
 
-Employee questions:
-${questions}
+Required topics:
+${REQUIRED_TOPICS.map(t => t.term).join('\n')}
 
-Policy document (first 6000 chars):
-${docText.slice(0, 6000)}`
+Employee questions (last 30 days):
+${questions || '(none yet)'}
+
+Policy document:
+${docText.slice(0, 8000)}`
       }],
-      max_tokens: 600
+      max_tokens: 1000
     })
   })
 
@@ -65,11 +87,18 @@ ${docText.slice(0, 6000)}`
     const scored = JSON.parse(raw)
 
     gaps = scored.map((g: any) => {
+      const topic = REQUIRED_TOPICS.find(t => t.term === g.term)
       let label = null
       if (g.count >= 1 && g.docMentions <= 2) label = 'High Gap'
       else if (g.count >= 1 && g.docMentions <= 9) label = 'Gap'
       else if (g.count === 0 && g.docMentions <= 2) label = 'Low Gap'
-      return { term: g.term, count: g.count, docMentions: g.docMentions, label }
+      return {
+        term: g.term,
+        count: g.count,
+        docMentions: g.docMentions,
+        regulation: topic?.regulation ?? '',
+        label
+      }
     })
     .filter((g: any) => g.label !== null)
     .sort((a: any, b: any) => {
