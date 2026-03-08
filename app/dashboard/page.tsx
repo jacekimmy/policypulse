@@ -1469,15 +1469,20 @@ function AdminDashboard() {
   const [adminStats, setAdminStats] = useState<{ completion: number; atRiskCount: number; atRisk: Array<{ name: string; score: string; risk: string }> } | null>(null)
   const [gaps, setGaps] = useState<Array<{ term: string; count: number; docMentions: number }>>([])
   const [uploading, setUploading] = useState(false)
-  const [uploadStatus, setUploadStatus] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
-  const isMobile = useIsMobile()
+const [uploadStatus, setUploadStatus] = useState('')
+const [adminId, setAdminId] = useState<string | null>(null)
+const fileRef = useRef<HTMLInputElement>(null)
+const isMobile = useIsMobile()
 
-  useEffect(() => {
-    fetch('/api/audit').then(r => r.json()).then(d => setAuditLogs(d.logs ?? []))
-    fetch('/api/admin-stats').then(r => r.json()).then(d => setAdminStats(d))
-    fetch('/api/gap-analysis').then(r => r.json()).then(d => setGaps(d.gaps ?? []))
-  }, [])
+useEffect(() => {
+  const supabase = createClient()
+  supabase.auth.getUser().then(({ data: { user } }) => {
+    if (user) setAdminId(user.id)
+  })
+  fetch('/api/audit').then(r => r.json()).then(d => setAuditLogs(d.logs ?? []))
+  fetch('/api/admin-stats').then(r => r.json()).then(d => setAdminStats(d))
+  fetch('/api/gap-analysis').then(r => r.json()).then(d => setGaps(d.gaps ?? []))
+}, [])
 
   async function handleUpload(file: File) {
     if (!file || file.type !== 'application/pdf') { setUploadStatus('Please upload a PDF file.'); return }
@@ -1659,11 +1664,11 @@ function AdminDashboard() {
               <div className="invite-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                 <div>
                   <div style={{ fontSize: '10px', fontWeight: 700, color: '#b0a08c', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '12px' }}>Individual Invite</div>
-                  <InviteForm />
+                  <InviteForm adminId={adminId} />
                 </div>
                 <div>
                   <div style={{ fontSize: '10px', fontWeight: 700, color: '#b0a08c', textTransform: 'uppercase', letterSpacing: '1.2px', marginBottom: '12px' }}>Bulk Upload</div>
-                  <CsvUpload />
+                  <CsvUpload adminId={adminId} />
                 </div>
               </div>
             </div>
@@ -1676,7 +1681,7 @@ function AdminDashboard() {
   )
 }
 
-function CsvUpload() {
+function CsvUpload({ adminId }: { adminId: string | null }) {
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -1694,7 +1699,7 @@ function CsvUpload() {
       const role = parts[1]?.trim().replace(/"/g, '') || 'worker'
       if (!email || !email.includes('@')) continue
       try {
-        const res = await fetch('/api/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, role }) })
+        const res = await fetch('/api/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, role, adminId }) })
         const data = await res.json()
         if (data.success) sent++; else failed++
       } catch { failed++ }
@@ -1722,7 +1727,7 @@ function CsvUpload() {
   )
 }
 
-function InviteForm() {
+function InviteForm({ adminId }: { adminId: string | null }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('worker')
   const [status, setStatus] = useState('')
@@ -1733,7 +1738,7 @@ function InviteForm() {
     setLoading(true)
     setStatus('')
     try {
-      const res = await fetch('/api/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, role }) })
+      const res = await fetch('/api/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, role, adminId }) })
       const data = await res.json()
       if (data.success) { setStatus(`Invite sent to ${email}`); setEmail('') }
       else setStatus(`Error: ${data.error}`)

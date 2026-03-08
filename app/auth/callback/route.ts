@@ -1,30 +1,31 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')
 
-  if (code) {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) return NextResponse.redirect(`${origin}/dashboard`)
-  }
+  if (!code) return NextResponse.redirect(new URL('/login', req.url))
 
-  return NextResponse.redirect(`${origin}/login`)
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+  if (error || !data.user) return NextResponse.redirect(new URL('/login', req.url))
+
+  const user = data.user
+  const metadata = user.user_metadata
+
+  // Write role and org_id to profile
+  await supabase.from('profiles').upsert({
+    id: user.id,
+    email: user.email,
+    role: metadata.role ?? 'worker',
+    organization_id: metadata.organization_id ?? null,
+  })
+
+  return NextResponse.redirect(new URL('/dashboard', req.url))
 }
