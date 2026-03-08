@@ -42,7 +42,7 @@ async function findRelevantChunks(question: string, organization_id: string): Pr
   }).sort((a, b) => b.score - a.score)
 
   const top = scored.filter(c => c.score > 0).slice(0, 5)
-  if (top.length === 0) return scored.slice(0, 3).map(c => c.content).join('\n\n')
+  if (top.length === 0) return ''
   return top.map(c => c.content).join('\n\n')
 }
 
