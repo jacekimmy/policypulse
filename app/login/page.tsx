@@ -314,6 +314,40 @@ useEffect(() => {
   })
 }, [])
 
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search)
+  const code = params.get('code')
+  const token_hash = params.get('token_hash')
+  const type = params.get('type')
+
+  async function handleInvite() {
+    if (token_hash && type) {
+      const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any })
+      if (!error && data.user) {
+        const metadata = data.user.user_metadata
+        await fetch('/api/auth/set-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: data.user.id,
+            email: data.user.email,
+            role: metadata.role ?? 'worker',
+            organization_id: metadata.organization_id ?? null,
+          })
+        })
+        router.push('/dashboard')
+      }
+    } else if (code) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+      if (!error && data.user) {
+        router.push('/dashboard')
+      }
+    }
+  }
+
+  handleInvite()
+}, [])
+
 async function handleMagicLink() {
   if (!email) { setError('Enter your email first'); return }
   setLoading(true)
