@@ -7,7 +7,6 @@ const supabase = createClient(
 )
 
 export async function GET() {
-  // Get all chat questions from the last 30 days
   const since = new Date()
   since.setDate(since.getDate() - 30)
 
@@ -20,14 +19,11 @@ export async function GET() {
     return NextResponse.json({ gaps: [] })
   }
 
-  // Get all doc chunks to cross-reference
   const { data: chunks } = await supabase
     .from('document_chunks')
     .select('content')
 
-  const docText = chunks?.map(c => c.content).join(' ').toLowerCase() ?? ''
-
-  // Use AI to extract topics from questions
+  const docText = chunks?.map(c => c.content).join(' ') ?? ''
   const questions = chats.map(c => c.question).join('\n')
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -40,45 +36,49 @@ export async function GET() {
       model: 'llama-3.3-70b-versatile',
       messages: [{
         role: 'user',
-        content: `Extract the top 8 compliance topics from these employee questions. Return ONLY a JSON array of strings, no other text:\n\n${questions}`
+        content: `You are a policy compliance analyst. Analyze these employee questions and this policy document.
+
+For each of the top 8 compliance topics found in the questions, determine:
+1. How many employee questions relate to this topic (count)
+2. How well the policy document covers this topic (docMentions: 0 = not covered, 1-2 = barely covered, 3-9 = lightly covered, 10+ = well covered)
+
+Be semantic - understand meaning, not just keywords. "What's my PTO" and "how many vacation days do I get" are both about the same topic.
+
+Return ONLY a JSON array, no other text:
+[{"term": "Topic Name", "count": <number>, "docMentions": <number>}]
+
+Employee questions:
+${questions}
+
+Policy document (first 6000 chars):
+${docText.slice(0, 6000)}`
       }],
-      max_tokens: 200
+      max_tokens: 600
     })
   })
 
   const aiData = await res.json()
-  let topics: string[] = []
+  let gaps: any[] = []
+
   try {
     const raw = aiData.choices[0].message.content.replace(/```json|```/g, '').trim()
-    topics = JSON.parse(raw)
+    const scored = JSON.parse(raw)
+
+    gaps = scored.map((g: any) => {
+      let label = null
+      if (g.count >= 1 && g.docMentions <= 2) label = 'High Gap'
+      else if (g.count >= 1 && g.docMentions <= 9) label = 'Gap'
+      else if (g.count === 0 && g.docMentions <= 2) label = 'Low Gap'
+      return { term: g.term, count: g.count, docMentions: g.docMentions, label }
+    })
+    .filter((g: any) => g.label !== null)
+    .sort((a: any, b: any) => {
+      const order: Record<string, number> = { 'High Gap': 0, 'Gap': 1, 'Low Gap': 2 }
+      return order[a.label] - order[b.label]
+    })
   } catch {
     return NextResponse.json({ gaps: [] })
   }
-
-  // Score each topic by question frequency vs doc coverage
-  const gaps = topics.map(topic => {
-    const topicWords = topic.toLowerCase().split(' ').filter(w => w.length > 2)
-    const count = chats.filter(c => {
-      const q = c.question.toLowerCase()
-      return topicWords.some(word => q.includes(word))
-    }).length
-    const docMentions = topicWords.reduce((acc, word) => {
-      return acc + (docText.match(new RegExp(word, 'g')) ?? []).length
-    }, 0)
-
-    let label = null
-    if (count >= 1 && docMentions <= 2) label = 'High Gap'
-    else if (count >= 1 && docMentions <= 9) label = 'Gap'
-    else if (count === 0 && docMentions <= 2) label = 'Low Gap'
-    else label = null
-
-    return { term: topic, count, docMentions, label }
-  })
-  .filter(g => g.label !== null)
-  .sort((a, b) => {
-    const order: Record<string, number> = { 'High Gap': 0, 'Gap': 1, 'Low Gap': 2 }
-    return order[a.label!] - order[b.label!]
-  })
 
   return NextResponse.json({ gaps })
 }
