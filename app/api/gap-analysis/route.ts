@@ -57,7 +57,7 @@ export async function GET() {
 
   // Score each topic by question frequency vs doc coverage
   const gaps = topics.map(topic => {
-    const topicWords = topic.toLowerCase().split(' ').filter(w => w.length > 3)
+    const topicWords = topic.toLowerCase().split(' ').filter(w => w.length > 2)
 const count = chats.filter(c => {
   const q = c.question.toLowerCase()
   return topicWords.some(word => q.includes(word))
