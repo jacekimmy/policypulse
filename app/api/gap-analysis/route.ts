@@ -61,10 +61,11 @@ export async function GET() {
       c.question.toLowerCase().includes(topic.toLowerCase())
     ).length
     const docMentions = (docText.match(new RegExp(topic.toLowerCase(), 'g')) ?? []).length
-    return { term: topic, count, docMentions }
+    const gapScore = count - (docMentions * 0.1)
+    return { term: topic, count, docMentions, gapScore }
   })
-  .filter(g => g.count > 0)
-  .sort((a, b) => (b.count - b.docMentions) - (a.count - a.docMentions))
+  .filter(g => g.count > 0 && g.gapScore > 0)
+  .sort((a, b) => b.gapScore - a.gapScore)
 
   return NextResponse.json({ gaps })
 }
