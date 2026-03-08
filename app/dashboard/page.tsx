@@ -1592,33 +1592,41 @@ function AdminDashboard() {
             </div>
           )}
 
-          {gaps.map((g, i) => {
-  const label = (g as any).label
-  const isHigh = label === 'High Gap'
-  const isGap = label === 'Gap'
-  const bgColor = isHigh ? 'rgba(184,92,82,0.04)' : isGap ? 'rgba(182,142,108,0.04)' : 'rgba(108,142,182,0.04)'
-  const borderColor = isHigh ? 'rgba(184,92,82,0.15)' : isGap ? 'rgba(182,142,108,0.12)' : 'rgba(108,142,182,0.12)'
-  const iconBg = isHigh ? 'rgba(184,92,82,0.08)' : isGap ? 'rgba(182,142,108,0.08)' : 'rgba(108,142,182,0.08)'
-  const iconBorder = isHigh ? 'rgba(184,92,82,0.2)' : isGap ? 'rgba(182,142,108,0.2)' : 'rgba(108,142,182,0.2)'
-  const iconColor = isHigh ? '#8a3a30' : isGap ? '#7a5020' : '#205070'
-  return (
-    <div key={g.term} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 18px', borderRadius: '16px', background: bgColor, border: `1px solid ${borderColor}`, marginBottom: '10px', flexWrap: 'wrap' }}>
-      <div style={{ width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: iconBg, border: `1px solid ${iconBorder}`, flexShrink: 0 }}>
-        <IconAlertTriangle size={15} color={iconColor} />
-      </div>
-      <div style={{ flex: 1, minWidth: '120px' }}>
-        <div style={{ fontSize: '15px', fontWeight: 600, textTransform: 'capitalize', marginBottom: '2px', color: '#2c2415' }}>{g.term}</div>
-        <div style={{ fontSize: '11px', color: '#b0a895', marginBottom: '3px' }}>{(g as any).regulation}</div>
-        <div style={{ fontSize: '12px', color: '#8a7a65' }}>
-          Asked {g.count}× · {g.docMentions} mention{g.docMentions !== 1 ? 's' : ''} in docs
-        </div>
-      </div>
-      <span className={`badge ${isHigh ? 'badge-red' : isGap ? 'badge-amber' : 'badge-blue'}`}>
-        {label}
-      </span>
-    </div>
-  )
-})}
+          {page === 'gaps' && (
+            <div className="fade-in">
+              <PageHeader title="Gap Analysis" subtitle="Required compliance topics and how well your docs cover them." />
+              <div className="glass-card" style={{ padding: isMobile ? '20px' : '28px' }}>
+                {gaps.length === 0 && <div style={{ color: '#8a7a65', fontSize: '14px' }}>Not enough data yet.</div>}
+                {gaps.map((g) => {
+                  const label = (g as any).label
+                  const isHigh = label === 'High Gap'
+                  const isGap = label === 'Gap'
+                  const bgColor = isHigh ? 'rgba(184,92,82,0.04)' : isGap ? 'rgba(182,142,108,0.04)' : 'rgba(108,142,182,0.04)'
+                  const borderColor = isHigh ? 'rgba(184,92,82,0.15)' : isGap ? 'rgba(182,142,108,0.12)' : 'rgba(108,142,182,0.12)'
+                  const iconBg = isHigh ? 'rgba(184,92,82,0.08)' : isGap ? 'rgba(182,142,108,0.08)' : 'rgba(108,142,182,0.08)'
+                  const iconBorder = isHigh ? 'rgba(184,92,82,0.2)' : isGap ? 'rgba(182,142,108,0.2)' : 'rgba(108,142,182,0.2)'
+                  const iconColor = isHigh ? '#8a3a30' : isGap ? '#7a5020' : '#205070'
+                  return (
+                    <div key={g.term} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 18px', borderRadius: '16px', background: bgColor, border: `1px solid ${borderColor}`, marginBottom: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: iconBg, border: `1px solid ${iconBorder}`, flexShrink: 0 }}>
+                        <IconAlertTriangle size={15} color={iconColor} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: '120px' }}>
+                        <div style={{ fontSize: '15px', fontWeight: 600, textTransform: 'capitalize', marginBottom: '2px', color: '#2c2415' }}>{g.term}</div>
+                        <div style={{ fontSize: '11px', color: '#b0a895', marginBottom: '3px' }}>{(g as any).regulation}</div>
+                        <div style={{ fontSize: '12px', color: '#8a7a65' }}>
+                          Asked {g.count}× · {g.docMentions} mention{g.docMentions !== 1 ? 's' : ''} in docs
+                        </div>
+                      </div>
+                      <span className={`badge ${isHigh ? 'badge-red' : isGap ? 'badge-amber' : 'badge-blue'}`}>
+                        {label}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {page === 'logs' && (
             <div className="fade-in">
