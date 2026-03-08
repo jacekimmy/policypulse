@@ -68,7 +68,7 @@ const count = chats.filter(c => {
     const gapScore = count - (docMentions * 0.1)
     return { term: topic, count, docMentions, gapScore }
   })
-  .filter(g => g.docMentions < 5)
+  .filter(g => g.docMentions < 20)
   .sort((a, b) => b.gapScore - a.gapScore)
 
   return NextResponse.json({ gaps })
