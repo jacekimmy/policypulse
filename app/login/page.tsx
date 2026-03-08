@@ -301,8 +301,10 @@ export default function LoginPage() {
 
 useEffect(() => {
   const hash = window.location.hash
+  console.log('Hash:', hash)
   if (hash && hash.includes('access_token')) {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user }, error }) => {
+      console.log('User:', user, 'Error:', error)
       if (user) {
         const metadata = user.user_metadata
         await fetch('/api/auth/set-profile', {
