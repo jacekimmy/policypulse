@@ -62,7 +62,9 @@ const count = chats.filter(c => {
   const q = c.question.toLowerCase()
   return topicWords.some(word => q.includes(word))
 }).length
-    const docMentions = (docText.match(new RegExp(topic.toLowerCase(), 'g')) ?? []).length
+    const docMentions = topicWords.reduce((acc, word) => {
+  return acc + (docText.match(new RegExp(word, 'g')) ?? []).length
+}, 0)
     const gapScore = count - (docMentions * 0.1)
     return { term: topic, count, docMentions, gapScore }
   })
