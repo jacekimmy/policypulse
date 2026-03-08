@@ -301,25 +301,28 @@ export default function LoginPage() {
 
 useEffect(() => {
   const hash = window.location.hash
-  console.log('Hash:', hash)
   if (hash && hash.includes('access_token')) {
-    supabase.auth.getUser().then(async ({ data: { user }, error }) => {
-      console.log('User:', user, 'Error:', error)
-      if (user) {
-        const metadata = user.user_metadata
-        await fetch('/api/auth/set-profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: user.id,
-            email: user.email,
-            role: metadata.role ?? 'worker',
-            organization_id: metadata.organization_id ?? null,
+    const params = new URLSearchParams(hash.replace('#', ''))
+    const access_token = params.get('access_token')
+    const refresh_token = params.get('refresh_token')
+    if (access_token && refresh_token) {
+      supabase.auth.setSession({ access_token, refresh_token }).then(async ({ data, error }) => {
+        if (data.user && !error) {
+          const metadata = data.user.user_metadata
+          await fetch('/api/auth/set-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: data.user.id,
+              email: data.user.email,
+              role: metadata.role ?? 'worker',
+              organization_id: metadata.organization_id ?? null,
+            })
           })
-        })
-        router.push('/dashboard')
-      }
-    })
+          router.push('/dashboard')
+        }
+      })
+    }
   }
 }, [])
   
