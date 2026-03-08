@@ -64,7 +64,7 @@ export async function GET() {
     const gapScore = count - (docMentions * 0.1)
     return { term: topic, count, docMentions, gapScore }
   })
-  .filter(g => g.count > 0 && g.gapScore > 0)
+  .filter(g => g.docMentions < 5)
   .sort((a, b) => b.gapScore - a.gapScore)
 
   return NextResponse.json({ gaps })
