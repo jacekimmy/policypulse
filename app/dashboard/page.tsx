@@ -1472,7 +1472,7 @@ function AdminDashboard() {
   const [topicQuery, setTopicQuery] = useState('')
 const [topicResults, setTopicResults] = useState<any[]>([])
 const [topicLoading, setTopicLoading] = useState(false)
-const [topicMeta, setTopicMeta] = useState<{ total: number; chatCount: number; quizCount: number } | null>(null)
+const [topicMeta, setTopicMeta] = useState<{ total: number; chatCount: number; quizCount: number; keywords: string[] } | null>(null)
 const [uploadStatus, setUploadStatus] = useState('')
 const [adminId, setAdminId] = useState<string | null>(null)
 const fileRef = useRef<HTMLInputElement>(null)
@@ -1515,7 +1515,7 @@ useEffect(() => {
   const res = await fetch(`/api/topic-search?q=${encodeURIComponent(topicQuery.trim())}`)
   const data = await res.json()
   setTopicResults(data.results ?? [])
-  setTopicMeta({ total: data.total, chatCount: data.chatCount, quizCount: data.quizCount })
+  setTopicMeta({ total: data.total, chatCount: data.chatCount, quizCount: data.quizCount, keywords: data.keywords ?? [] })
   setTopicLoading(false)
 }
 
@@ -1656,12 +1656,19 @@ function exportTopicCSV() {
               </div>
 
               {!topicLoading && topicMeta !== null && (
-                <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                  <span className="badge badge-blue">{topicMeta.total} total result{topicMeta.total !== 1 ? 's' : ''}</span>
-                  <span className="badge badge-blue"><IconChat size={11} /> {topicMeta.chatCount} chat</span>
-                  <span className="badge badge-green"><IconTarget size={11} /> {topicMeta.quizCount} quiz</span>
-                </div>
-              )}
+  <div style={{ marginBottom: '16px' }}>
+    <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+      <span className="badge badge-blue">{topicMeta.total} total result{topicMeta.total !== 1 ? 's' : ''}</span>
+      <span className="badge badge-blue"><IconChat size={11} /> {topicMeta.chatCount} chat</span>
+      <span className="badge badge-green"><IconTarget size={11} /> {topicMeta.quizCount} quiz</span>
+    </div>
+    {topicMeta.keywords && topicMeta.keywords.length > 0 && (
+      <div style={{ fontSize: '11px', color: '#b0a08c', fontWeight: 500 }}>
+        Searched for: {topicMeta.keywords.join(', ')}
+      </div>
+    )}
+  </div>
+)}
 
               {topicLoading && (
                 <div style={{ color: '#8a7a65', fontSize: '14px', padding: '8px 0' }}>Searching all records...</div>

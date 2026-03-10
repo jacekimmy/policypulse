@@ -1,26 +1,74 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import Groq from 'groq-sdk'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! })
+
+async function expandKeywords(query: string): Promise<string[]> {
+  try {
+    const res = await groq.chat.completions.create({
+      model: 'llama3-8b-8192',
+      max_tokens: 100,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a home health care compliance assistant. Given a search topic, return a JSON array of 6-10 related keywords and phrases that would appear in compliance training records, chat logs, or quiz questions on that topic. Return ONLY the JSON array, no other text. Example: ["infection control","hand hygiene","PPE","gloves","isolation","MRSA","sanitization"]',
+        },
+        {
+          role: 'user',
+          content: query,
+        },
+      ],
+    })
+
+    const text = res.choices[0]?.message?.content?.trim() ?? '[]'
+    const parsed = JSON.parse(text)
+    // Always include the original query too
+    return [...new Set([query, ...parsed])] as string[]
+  } catch (e) {
+    console.error('Groq keyword expansion failed:', e)
+    // Fall back to just the original query
+    return [query]
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const q = searchParams.get('q')?.trim()
 
   if (!q || q.length < 2) {
-    return NextResponse.json({ results: [], total: 0, chatCount: 0, quizCount: 0 })
+    return NextResponse.json({ results: [], total: 0, chatCount: 0, quizCount: 0, keywords: [] })
   }
 
-  const keyword = `%${q}%`
+  // Expand to related keywords using AI
+  const keywords = await expandKeywords(q)
+
+  // Build an OR filter for all keywords across relevant columns
+  // e.g. question.ilike.%infection%,question.ilike.%hand hygiene%,...
+  const chatFilter = keywords
+    .flatMap(k => [
+      `question.ilike.%${k}%`,
+      `answer.ilike.%${k}%`,
+    ])
+    .join(',')
+
+  const quizFilter = keywords
+    .flatMap(k => [
+      `question.ilike.%${k}%`,
+      `topic.ilike.%${k}%`,
+    ])
+    .join(',')
 
   // ── 1. Search chat_logs ──────────────────────────────────────
   const { data: chatRows, error: chatErr } = await supabase
     .from('chat_logs')
     .select('id, user_id, question, answer, escalated, created_at')
-    .or(`question.ilike.${keyword},answer.ilike.${keyword}`)
+    .or(chatFilter)
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -28,14 +76,14 @@ export async function GET(req: NextRequest) {
     console.error('chat_logs query error:', chatErr)
   }
 
-  // ── 2. Search quiz_questions for matching question text or topic ──
+  // ── 2. Search quiz_questions ─────────────────────────────────
   const { data: matchingQuestions } = await supabase
     .from('quiz_questions')
     .select('id, question, topic')
-    .or(`question.ilike.${keyword},topic.ilike.${keyword}`)
+    .or(quizFilter)
     .limit(50)
 
-  // ── 3. Get quiz_results for those questions ──────────────────
+  // ── 3. Get quiz_results for matching questions ───────────────
   let quizRows: any[] = []
   if (matchingQuestions && matchingQuestions.length > 0) {
     const questionIds = matchingQuestions.map(q => q.id)
@@ -52,7 +100,7 @@ export async function GET(req: NextRequest) {
     }))
   }
 
-  // ── 4. Collect all user_ids and fetch profiles in one query ──
+  // ── 4. Fetch profiles for all user_ids ───────────────────────
   const allUserIds = [
     ...new Set([
       ...(chatRows ?? []).map(r => r.user_id),
@@ -108,5 +156,6 @@ export async function GET(req: NextRequest) {
     total: allResults.length,
     chatCount: chatResults.length,
     quizCount: quizResults.length,
+    keywords, // send back so admin can see what terms were searched
   })
 }
