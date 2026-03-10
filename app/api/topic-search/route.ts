@@ -17,7 +17,7 @@ async function expandKeywords(query: string): Promise<string[]> {
       messages: [
         {
           role: 'system',
-          content: 'You are a home health care compliance assistant. Given a search topic, return a JSON array of 6-10 related keywords and phrases that would appear in compliance training records, chat logs, or quiz questions on that topic. Return ONLY the JSON array, no other text. Example: ["infection control","hand hygiene","PPE","gloves","isolation","MRSA","sanitization"]',
+          content: 'You are a home health care compliance assistant. Given a search topic, return a JSON array of 10-15 related keywords, phrases, synonyms, and alternate forms that would appear in compliance training records, chat logs, or quiz questions. Include: direct synonyms, abbreviations, related procedures, and common alternate spellings. Return ONLY the JSON array, no other text. Example for "medication": ["medication","medicine","medications","medicines","drug","drugs","prescription","dosage","dose","administer","pill","pills","pharmaceutical","med","meds"]',
         },
         {
           role: 'user',
