@@ -1469,6 +1469,10 @@ function AdminDashboard() {
   const [adminStats, setAdminStats] = useState<{ completion: number; atRiskCount: number; atRisk: Array<{ name: string; score: string; risk: string }> } | null>(null)
   const [gaps, setGaps] = useState<Array<{ term: string; count: number; docMentions: number }>>([])
   const [uploading, setUploading] = useState(false)
+  const [topicQuery, setTopicQuery] = useState('')
+const [topicResults, setTopicResults] = useState<any[]>([])
+const [topicLoading, setTopicLoading] = useState(false)
+const [topicMeta, setTopicMeta] = useState<{ total: number; chatCount: number; quizCount: number } | null>(null)
 const [uploadStatus, setUploadStatus] = useState('')
 const [adminId, setAdminId] = useState<string | null>(null)
 const fileRef = useRef<HTMLInputElement>(null)
@@ -1503,14 +1507,48 @@ useEffect(() => {
   }
 
   function exportCSV() { window.open('/api/export-csv', '_blank') }
+  async function searchTopic() {
+  if (!topicQuery.trim()) return
+  setTopicLoading(true)
+  setTopicResults([])
+  setTopicMeta(null)
+  const res = await fetch(`/api/topic-search?q=${encodeURIComponent(topicQuery.trim())}`)
+  const data = await res.json()
+  setTopicResults(data.results ?? [])
+  setTopicMeta({ total: data.total, chatCount: data.chatCount, quizCount: data.quizCount })
+  setTopicLoading(false)
+}
+
+function exportTopicCSV() {
+  if (topicResults.length === 0) return
+  const headers = ['Date', 'Employee', 'Email', 'Type', 'Content', 'Score/Answer', 'Escalated']
+  const rows = topicResults.map(r => [
+    new Date(r.date).toLocaleDateString(),
+    r.employee,
+    r.email,
+    r.type,
+    `"${(r.content ?? '').replace(/"/g, '""')}"`,
+    r.type === 'quiz' ? `${r.score ?? ''}% (${r.correct ? 'correct' : 'wrong'})` : `"${(r.answer ?? '').replace(/"/g, '""')}"`,
+    r.type === 'chat' ? (r.escalated ? 'Yes' : 'No') : '',
+  ])
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `handrail-topic-${topicQuery.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
   const navItems = [
-    { key: 'dashboard', label: 'Overview', icon: <IconShield size={17} /> },
-    { key: 'knowledge', label: 'Knowledge', icon: <IconFolder size={17} /> },
-    { key: 'gaps', label: 'Gaps', icon: <IconMicroscope size={17} /> },
-    { key: 'logs', label: 'Logs', icon: <IconList size={17} /> },
-    { key: 'invite', label: 'Users', icon: <IconUsers size={17} /> },
-  ]
+  { key: 'dashboard', label: 'Overview', icon: <IconShield size={17} /> },
+  { key: 'search', label: 'Search', icon: <IconSearch size={17} /> },
+  { key: 'knowledge', label: 'Knowledge', icon: <IconFolder size={17} /> },
+  { key: 'gaps', label: 'Gaps', icon: <IconMicroscope size={17} /> },
+  { key: 'logs', label: 'Logs', icon: <IconList size={17} /> },
+  { key: 'invite', label: 'Users', icon: <IconUsers size={17} /> },
+]
 
   const currentPageLabel = navItems.find(n => n.key === page)?.label ?? 'Admin'
 
@@ -1571,6 +1609,110 @@ useEffect(() => {
             </div>
           )}
 
+          {page === 'search' && (
+            <div className="fade-in">
+              <PageHeader
+                title="Topic Search"
+                subtitle="Type any compliance topic to see every chat and quiz result across all employees."
+                action={
+                  topicResults.length > 0 ? (
+                    <button className="glass-btn glass-btn-primary" onClick={exportTopicCSV} style={{ padding: '11px 20px' }}>
+                      <IconDownload size={15} /> Export CSV
+                    </button>
+                  ) : undefined
+                }
+              />
+
+              <div className="search-row" style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                <input
+                  className="glass-input"
+                  value={topicQuery}
+                  onChange={e => setTopicQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && searchTopic()}
+                  placeholder='e.g. "infection control", "medication", "fall prevention"'
+                  style={{ flex: 1 }}
+                />
+                <button
+                  className="glass-btn glass-btn-primary"
+                  onClick={searchTopic}
+                  disabled={topicLoading}
+                  style={{ padding: '13px 24px', whiteSpace: 'nowrap' }}
+                >
+                  <IconSearch size={16} /> {topicLoading ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '24px' }}>
+                {['infection control', 'medication', 'fall prevention', 'emergency', 'HIPAA', 'abuse reporting'].map(tag => (
+                  <button
+                    key={tag}
+                    className="glass-btn"
+                    onClick={() => setTopicQuery(tag)}
+                    style={{ padding: '7px 14px', fontSize: '12px', borderRadius: '100px' }}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+
+              {!topicLoading && topicMeta !== null && (
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                  <span className="badge badge-blue">{topicMeta.total} total result{topicMeta.total !== 1 ? 's' : ''}</span>
+                  <span className="badge badge-blue"><IconChat size={11} /> {topicMeta.chatCount} chat</span>
+                  <span className="badge badge-green"><IconTarget size={11} /> {topicMeta.quizCount} quiz</span>
+                </div>
+              )}
+
+              {topicLoading && (
+                <div style={{ color: '#8a7a65', fontSize: '14px', padding: '8px 0' }}>Searching all records...</div>
+              )}
+
+              {!topicLoading && topicMeta?.total === 0 && (
+                <div className="glass-card" style={{ padding: '32px', textAlign: 'center', color: '#8a7a65', fontSize: '14px' }}>
+                  No results for "{topicQuery}". Try a broader term.
+                </div>
+              )}
+
+              {!topicLoading && topicResults.length > 0 && (
+                <div className="glass-card" style={{ padding: isMobile ? '16px' : '24px' }}>
+                  {topicResults.map((r, i) => (
+                    <div
+                      key={r.id ?? i}
+                      style={{ display: 'flex', gap: '12px', padding: '14px 0', borderBottom: '1px solid rgba(122,100,70,0.05)', alignItems: 'flex-start', flexWrap: 'wrap' }}
+                    >
+                      <span className={`badge ${r.type === 'chat' ? 'badge-blue' : 'badge-green'}`} style={{ flexShrink: 0, marginTop: '2px' }}>
+                        {r.type === 'chat' ? <><IconChat size={11} /> Chat</> : <><IconTarget size={11} /> Quiz</>}
+                      </span>
+                      <div style={{ flex: 1, minWidth: '180px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c2415', marginBottom: '4px' }}>{r.employee}</div>
+                        <div style={{ fontSize: '13px', color: '#6a5a45', lineHeight: 1.55, marginBottom: r.type === 'chat' && r.answer ? '8px' : '0' }}>{r.content}</div>
+                        {r.type === 'chat' && r.answer && (
+                          <div style={{ fontSize: '12px', color: '#8a7a65', lineHeight: 1.5, padding: '8px 12px', background: 'rgba(255,255,255,0.35)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.5)', marginTop: '6px', maxHeight: '60px', overflow: 'hidden' }}>
+                            {r.answer.length > 160 ? r.answer.slice(0, 160) + '…' : r.answer}
+                          </div>
+                        )}
+                        {r.type === 'quiz' && (
+                          <span className={`badge ${r.correct ? 'badge-green' : 'badge-red'}`} style={{ marginTop: '6px', display: 'inline-flex' }}>
+                            {r.correct ? <IconCheck size={11} /> : <IconX size={11} />}
+                            {r.score != null ? `${r.score}%` : (r.correct ? 'Correct' : 'Wrong')}
+                          </span>
+                        )}
+                        {r.type === 'chat' && r.escalated && (
+                          <span style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#8a3a30', fontWeight: 700 }}>
+                            <IconAlertTriangle size={10} /> Escalated
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#b0a08c', fontWeight: 500, whiteSpace: 'nowrap', marginTop: '2px' }}>
+                        {new Date(r.date).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
           {page === 'knowledge' && (
             <div className="fade-in">
               <PageHeader title="Knowledge Base" subtitle="Upload handbooks and policy docs. The AI reads them instantly." />
